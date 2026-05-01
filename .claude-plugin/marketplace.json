@@ -1,0 +1,13 @@
+{
+  "name": "agile-dev",
+  "owner": {
+    "name": "Mateusz Gruszczynski"
+  },
+  "plugins": [
+    {
+      "name": "agile-dev",
+      "source": "./",
+      "description": "Agile development pipeline orchestrator — V-model phases with checkpoints."
+    }
+  ]
+}

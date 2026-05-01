@@ -1,0 +1,10 @@
+{
+  "name": "agile-dev",
+  "version": "0.1.0",
+  "description": "Agile development pipeline for Claude Code. Drives V-model phases for greenfield projects, existing codebase improvements, and single bounded changes — with a checkpoint at every plan, spec, and review.",
+  "author": {
+    "name": "Mateusz Gruszczynski"
+  },
+  "homepage": "https://github.com/mgruszczynski/agile-dev-pipeline",
+  "keywords": ["agile", "pipeline", "v-model", "tdd", "scrum"]
+}
