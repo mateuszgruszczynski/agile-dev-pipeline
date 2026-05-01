@@ -82,7 +82,7 @@ The pipeline is distributed as a Claude Code plugin. Installation is two command
 ### Step 1 — Add the marketplace
 
 ```
-/plugin marketplace add mgruszczynski/agile-dev-pipeline
+/plugin marketplace add mateuszgruszczynski/agile-dev-pipeline
 ```
 
 This registers the GitHub repository as a plugin source.
