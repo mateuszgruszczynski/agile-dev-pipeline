@@ -51,7 +51,10 @@ Documentation tasks appear in the task list like any other task, with a role own
 - Infrastructure and security tasks should not be deferred to the end
 - For epics with a UI: always include at least one DESIGN task and at least one E2E scenario of type UI. For backend / protocol-only epics, the equivalent E2E task is API / Protocol / CLI / File-batch typed — pick the type that matches how the epic is actually used
 
-**Use subagents:** for long task lists, delegate task generation to a subagent and review the set yourself before the checkpoint. Keep the role-assignment and dependency decisions with you.
+**Subagent — default for task list drafting.** Skip only for very small epics (<5 tasks). Role assignments and dependencies stay with the orchestrator — they need conversation context.
+
+- **Pass:** approved spec (`i1-spec.md`), active role set (from `f2-architecture.md`), Task types + Documentation Policy below.
+- **Expect:** ordered draft list with proposed role + description + done condition per task. Orchestrator reviews roles, adjusts dependencies, writes `i2-tasks.md`.
 
 **Output:**
 - Ordered task list with role assignments and dependencies

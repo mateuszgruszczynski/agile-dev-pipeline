@@ -88,7 +88,10 @@ Assign **both** axes per scenario. The level decides which phase owns the test; 
 - After assigning levels, verify the set covers all ACs without obvious gaps or redundancy
 - *When working on an existing codebase:* also write regression scenarios for existing behaviour that this epic touches. If existing behaviour has no tests, write them now before changing anything.
 
-**Use subagents:** for long scenario lists (a single AC may produce multiple scenarios across happy path, edge cases, and failure paths), delegate BDD scenario writing to a subagent and review the set yourself before the checkpoint. Keep the test-level decisions with you — the pyramid rule needs judgment.
+**Subagent — default for BDD scenario drafting.** Skip only for very small epics (<3 ACs). Level/type tagging stays with the orchestrator — the pyramid rule needs judgment.
+
+- **Pass:** approved spec (`i1-spec.md`) with ACs, writing guidelines from this file, BDD format spec. Tell it to produce ≥1 scenario per AC plus regression scenarios for behaviour this epic touches.
+- **Expect:** draft scenarios in BDD format, no level/type tags. Orchestrator assigns level (decision rule) and type (matching architecture interfaces), writes `i3-test-plan.md`.
 
 **Output:**
 - Acceptance test scenarios list (document or table)

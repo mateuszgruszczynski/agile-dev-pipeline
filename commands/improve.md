@@ -31,6 +31,20 @@ Wait for the answer before proceeding.
 
 ## Step 2 — Determine where we are
 
+### 2a — Git check
+
+Run `git rev-parse --git-dir 2>/dev/null`. The pipeline assumes git throughout.
+
+- **Git present:** proceed.
+- **No git:** existing-codebase mode without git is surprising — usually means the user is working in a tarball, an unzipped archive, or the wrong directory. Ask:
+
+  > `This directory is not a git repository, which is unusual for an existing codebase. Options: 1. Initialise git here (will commit current state as a baseline). 2. Stop — I'm in the wrong directory or need to clone the repo first.`
+
+  - **1 — init:** run `git init`, stage everything, commit with message `chore: baseline before agile-dev pipeline`. Then continue.
+  - **2 — stop:** halt. Say `Stopped. Cd to the right repo (or clone it), then re-run /agile-dev:improve.`
+
+### 2b — Pipeline state
+
 Check whether `.project-artifacts/state.md` exists:
 
 - **Does not exist** → fresh analysis. Begin at **Analysis**.
@@ -98,8 +112,8 @@ Do **not** run iteration phases in this session. Each phase runs in its own sess
 
 ```
 .project-artifacts/
-  state.md                            ← pipeline position and phase index
-  timeline.md                         ← per-iteration log (created at first iteration close)
+  state.md                            ← pipeline position, backlog, and per-iteration history
+  pipeline-feedback.md                ← append-only meta-feedback about the agile-dev pipeline itself (created on first entry)
   ana-analysis.md                     ← Analysis output (improve mode only)
   f1-vision.md
   f2-architecture.md

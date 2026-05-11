@@ -17,6 +17,31 @@ Each phase definition lives in its own file under `${CLAUDE_PLUGIN_ROOT}/pipelin
 
 ## Step 1 — Determine where we are
 
+### 1a — Git check
+
+Run `git rev-parse --git-dir 2>/dev/null` in the working directory. The pipeline assumes git throughout (commit-small rule, CHANGELOG, mid-iteration recovery, Verification committing test files), so resolve this before writing any artifacts.
+
+- **Git present:** proceed.
+- **No git:** offer to initialise. Greenfield default is yes — say:
+
+  > `This directory is not a git repository. The pipeline requires git for commits, CHANGELOG, and recovery flows. Initialise it now? (yes / no)`
+
+  - **yes:** run `git init`, then create a minimal `.gitignore` with:
+    ```
+    .env
+    .env.local
+    node_modules/
+    dist/
+    build/
+    target/
+    out/
+    .DS_Store
+    ```
+    Stage and commit with message `chore: initialise repository`. Continue.
+  - **no:** stop. Say `Git is required. Initialise a repo (or open the project from one), then re-run /agile-dev:start.`
+
+### 1b — Pipeline state
+
 Check whether `.project-artifacts/state.md` exists:
 
 - **Does not exist** → fresh project. Initialise state (see State file format below) and begin at **Vision**.
@@ -52,8 +77,8 @@ All outputs are persisted as markdown files so the pipeline survives session res
 
 ```
 .project-artifacts/
-  state.md                            ← pipeline position and phase index
-  timeline.md                         ← per-iteration log (created at first iteration close)
+  state.md                            ← pipeline position, backlog, and per-iteration history
+  pipeline-feedback.md                ← append-only meta-feedback about the agile-dev pipeline itself (created on first entry)
   f1-vision.md                        ← Vision output
   f2-architecture.md                  ← Architecture output
   f3-backlog.md                       ← Backlog output
@@ -111,9 +136,9 @@ iteration: <N>
 | P2 | Dashboard | L | TODO |
 
 ## Completed iterations
-| # | Epic | Closed | Retro |
-|---|---|---|---|
-| 001 | User Authentication | YYYY-MM-DD | iterations/001-user-authentication/i7-retro.md |
+| # | Epic | Status | Closed | Notes | Retro |
+|---|---|---|---|---|---|
+| 001 | User Authentication | DONE | YYYY-MM-DD | <one-line retro highlight, or "No plan changes", or abandonment reason> | iterations/001-user-authentication/i7-retro.md |
 
 ## Releases
 | Version | Date | Iterations | Notes |
@@ -127,7 +152,7 @@ iteration: <N>
 Notes:
 - `mode` is `greenfield` for projects started with `/agile-dev:start`, `improve` for `/agile-dev:improve`.
 - `version` is `unreleased` until the first `/agile-dev:release`; thereafter it tracks the latest released version.
-- The `Completed iterations` table is empty until the first iteration closes; `/agile-dev:iterate` appends rows at iteration close. Split iterations (mid-iteration recovery Tier 2) appear as `<NNN>-A` and `<NNN>-B` rows.
+- The `Completed iterations` table is empty until the first iteration closes; `/agile-dev:iterate` appends rows at iteration close. Split iterations (mid-iteration recovery Tier 2) appear as `<NNN>-A` and `<NNN>-B` rows. The `Status` column is `DONE` for completed iterations and `ABANDONED` for Tier 3 closures. The `Notes` column carries a one-line retro highlight (or the abandonment reason).
 - The `Releases` and `Foundation revisions` tables stay empty until their respective commands run; keep the headings as placeholders so the format stays consistent.
 - Update `status` to `COMPLETE` when all epics are `DONE`.
 

@@ -20,7 +20,10 @@
   - *Polished* — full visual design with branding, animations, and accessibility focus
 - **Security posture:** authentication mechanism (if any), secrets and credentials management strategy (environment variables, secrets manager, vault), data sensitivity classification. Every project must decide how credentials are handled before the first line of code is written.
 
-**Questions to ask the user if unclear:**
+**Example questions to draw from — adapt to the conversation, do not run as a script:**
+
+The list below is a non-exhaustive starter set. Pick the ones that close real gaps for *this* project, ask follow-ups based on the answers, and skip any that earlier answers (or the Vision output) have already covered. **Stop asking when you have enough information to produce every item in the Output section below** — running through every example question is not the goal; getting to a confident Output is.
+
 - "Will this need to run offline or always requires network access?"
 - "Is multi-user or concurrent access required?"
 - "Do you already have infrastructure preferences (Docker, serverless, bare metal)?"
@@ -69,7 +72,12 @@ All architecture diagrams are produced as code, stored in the repository. No bin
 - **Mermaid** is the default rendering format. Use it for C4 diagrams and sequence diagrams.
 - **PlantUML** is acceptable as an alternative if the team already uses it.
 
-**Use subagents:** for complex projects, delegate architecture document drafting to a subagent — especially the C4 diagrams and the integration strategy table — and review the result yourself before the checkpoint.
+**Subagent — default for document drafting.** Skip only for very small projects (single CLI tool, one-file script). The C4 diagrams and integration strategy table are particularly worth offloading. High-stakes decisions (tech stack, role set, orchestration approach, security posture) stay with the orchestrator and the user.
+
+- **Pass:** approved Vision (`f1-vision.md`), user's answers, Output requirements + diagram standard + Project Type Adaptations table from this file.
+- **Expect:** full architecture document with Mermaid diagrams. Orchestrator reviews, fixes decisions, writes `f2-architecture.md`.
+
+For complex projects, pin a heavier model on the subagent call (e.g. `model: opus`) for architecture reasoning; orchestrator's default model is fine for the rest of Foundation.
 
 **Output:**
 - C4 Context diagram (Mermaid)

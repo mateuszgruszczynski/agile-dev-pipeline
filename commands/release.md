@@ -25,7 +25,7 @@ Read `.project-artifacts/state.md`.
 
 ## Step 2 — Determine release scope
 
-Read `.project-artifacts/timeline.md` (if it exists) and `state.md`'s Completed iterations table to list iterations closed since the last release.
+Read `state.md`'s Completed iterations table to list iterations closed since the last release.
 
 - The "last release" is the most recent line in the `Releases` table in `state.md` (see State file fields below). If no `Releases` table exists yet, this is the **first release** — every closed iteration counts.
 - If `current_phase: Retrospective`, also include the in-flight iteration (it is being closed under this release).

@@ -42,27 +42,65 @@ You:    APPROVE
 
 Claude: Starting Architecture
         [proposes architecture, asks about preferences]
-        ...
+        ...APPROVE...
+
+Claude: Starting Backlog → Environment
+        [generates .devcontainer/ + .claude/settings.json]
+        Foundation complete. Reopen the project in the dev container, then run /agile-dev:iterate.
+
+You:    [Cmd+Shift+P → Dev Containers: Reopen in Container]
+        /agile-dev:iterate
+
+Claude: [inside the container, picks the first epic, runs Refinement → ... → Retrospective]
 ```
 
-Every time Claude produces a plan, spec, or decision, it stops and asks for your approval before continuing. You can always redirect, ask for changes, or add context.
+Every time Claude produces a plan, spec, or decision, it stops and asks for your approval before continuing. You can redirect, ask for changes, or add context. The shift to "inside the dev container" happens once, between Foundation and the first iteration.
 
-### One phase per session
+### The two halves: Foundation and Iteration
 
-The iteration loop runs **one phase per `/agile-dev:iterate` invocation**. This keeps each Claude session small and token-efficient, and lets you pause between phases to think or run real work in another window.
+```
+Foundation (runs once per project)         Iteration loop (per epic, repeats)
+──────────────────────────────────         ──────────────────────────────────
+Vision → Architecture → Backlog            Refinement → Decomposition
+   → Environment                              → Test Plan → Development
+                                              → Verification → Integration
+                                              → Retrospective ── next epic ──┐
+                                                                              ↓
+                                              (continue, stop, or release)
+```
 
-| Phase | What you review |
-|---|---|
-| Vision | Vision statement, target users, constraints |
-| Architecture | Architecture, tech stack, infrastructure decisions |
-| Backlog | Full epic backlog with priorities |
-| Refinement | Detailed spec and acceptance criteria for the current epic |
-| Decomposition | Task breakdown by role |
-| Test Plan | Acceptance test scenarios — each tagged with **level** (Unit/Component/Contract/System-integration/E2E) and **type** (UI/API/Protocol/CLI/File-batch) — written before any code |
-| Development | Implementation + in-process tests (Unit/Component); self-review passed |
-| Verification | Out-of-process tests against the running application (System-integration, E2E, out-of-process Contract). E2E type follows architecture — UI, API, protocol, or multi-channel |
-| Integration | Production build, smoke test of the assembled app, demo readiness |
-| Retrospective | Findings and backlog updates |
+**Foundation** sets up the project once: what to build, how to build it, the list of epics, and a reproducible dev environment.
+
+**Iteration** runs through every epic in the backlog. Each iteration produces a spec, a test plan, code, automated tests, and a verified, demoable result. The loop flows forward continuously and only stops at ⛳ approval checkpoints. Closing the Claude session at any approval is a safe pause — the next command picks up where you left.
+
+### Foundation phases
+
+| Phase | What it produces | Checkpoint? |
+|---|---|---|
+| **Analysis** *(improve mode only)* | Snapshot of the existing codebase | Yes |
+| **Vision** | Statement of what we're building and why | Yes |
+| **Architecture** | Tech stack, component layout, integration plan | Yes |
+| **Backlog** | Prioritised list of epics | Yes |
+| **Environment** | Dev container (Docker) tailored to the stack; after this, you reopen the project inside the container | Yes |
+
+### Iteration phases
+
+| Phase | What it produces | Checkpoint? |
+|---|---|---|
+| **Refinement** | Detailed spec + Acceptance Criteria for this epic | Yes |
+| **Decomposition** | Task breakdown by role (DEV / QA / DEVOPS / SRE / SECURITY / DESIGN / DATA) | Auto-skip when straightforward |
+| **Test Plan** | BDD scenarios for each Acceptance Criterion, each tagged with level + type | Yes |
+| **Development** | Code + **in-process** tests (Unit, Component) | None |
+| **Verification** | **Out-of-process** tests (System-integration, E2E) run against the running application | None |
+| **Integration** | Production build, manual smoke test, demo readiness | Auto-continue on green |
+| **Retrospective** | Action items for the backlog; iteration-boundary decision (continue / stop / fix foundation) | Yes |
+
+> **A few terms worth a one-line gloss:**
+> - **AC** (Acceptance Criteria): testable conditions stating "this epic is done when …"
+> - **BDD** (Behaviour-Driven Development): scenarios in plain language — *Given X, When Y, Then Z* — that non-engineers can read and verify.
+> - **In-process tests:** run inside your application's own process. Fast, cheap (Unit, Component).
+> - **Out-of-process tests:** drive the real running application from outside — over HTTP, message queues, the UI, a CLI, etc. Slower, but prove the deployed app actually works (System-integration, E2E).
+> - **Level** vs **type:** every test scenario carries both. Level = scope (Unit / Component / Contract / System-integration / E2E). Type = interface (UI / API / Protocol / CLI / File-batch). A backend service can have E2E tests entirely over HTTP — E2E does **not** imply UI.
 
 ---
 
@@ -70,8 +108,10 @@ The iteration loop runs **one phase per `/agile-dev:iterate` invocation**. This 
 
 1. **Claude Code** installed and set up. If you haven't done this yet, follow the official guide: https://docs.anthropic.com/claude-code
 2. A Claude Code account with an active session.
+3. **Git** installed and your project initialised as a git repo. The pipeline relies on git for commits, history, and recovery flows. If your directory isn't a repo yet, `/agile-dev:start` will offer to `git init` for you.
+4. **Docker Desktop** (or another Docker runtime) and a container-aware editor — VS Code, Cursor, or any IDE with a "Reopen in Container" action. The pipeline generates a dev container for your project so all development work runs in a reproducible environment. If you don't have these, you'll be prompted to install them at the Environment phase.
 
-That's it — no other tools required.
+> **Dev container?** A Docker container with your project's dependencies pre-installed. After Backlog approval, the pipeline writes the container config; you click "Reopen in Container" in your editor; Claude restarts inside the container with the right tools already wired up. You don't need to know Docker to use it — the pipeline handles the setup.
 
 ---
 
@@ -168,21 +208,23 @@ Example:
 
 Goes through Refinement → Decomposition → Test Plan → Development → Verification → Integration → Retrospective for that single change only.
 
-### Running the next iteration phase
+### Running iterations
 
-After the foundation (Vision, Architecture, Backlog, Environment) is complete, drive each phase with:
+After Foundation is complete, drive the iteration loop with:
 
 ```
 /agile-dev:iterate
 ```
 
-Each invocation runs **exactly one phase**, then stops with an instruction to run `/agile-dev:iterate` again to continue. This keeps each session small.
+Each invocation runs **forward through every iteration phase** until it hits an approval checkpoint, the iteration boundary, or the end of the backlog. After every approval, the loop continues in the same session — you don't have to re-invoke the command between phases. Closing the session at any approval saves your place; the next `/agile-dev:iterate` resumes from there.
 
 To work on a specific epic out of priority order:
 
 ```
 /agile-dev:iterate <epic name>
 ```
+
+Only allowed when no other iteration is in progress.
 
 ### Checking status
 
@@ -206,8 +248,8 @@ After the pipeline has run for a while, your project will contain a `.project-ar
 
 ```
 .project-artifacts/
-  state.md                        ← current position in the pipeline
-  timeline.md                     ← per-iteration log
+  state.md                        ← current position, backlog, and per-iteration history
+  pipeline-feedback.md            ← meta-feedback about the pipeline itself (created on first entry)
   ana-analysis.md                 ← codebase analysis (improve mode only)
   f1-vision.md                    ← approved vision and goals
   f2-architecture.md              ← approved architecture decisions
@@ -236,6 +278,51 @@ CHANGELOG.md                      ← root of project; appended at iteration clo
 These files are yours — you can read, edit, and commit them alongside your code.
 
 The pipeline also generates `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, and `.claude/settings.json` during the Environment phase, so all subsequent work runs inside a reproducible container.
+
+### Feeding pipeline issues back
+
+`pipeline-feedback.md` is the place to capture **meta-feedback about the pipeline tool itself** — things like ambiguous prompts, awkward orchestration, generated files that needed manual fixup, or surprising checkpoint behaviour. It is project-agnostic: anything project-specific stays in the per-iteration `i7-retro.md`. The Retrospective phase prompts for it once per iteration and appends entries automatically when there is something to record. To turn the file into pipeline improvements, open Claude Code in the `agile-dev-pipeline` repo, run `/agile-dev:improve` (or paste the file directly), and the entries become items in `IMPROVEMENTS.md` / epics.
+
+---
+
+## FAQ
+
+**Do I really need to be in a git repository?**
+Yes. The pipeline relies on git for commits, history, CHANGELOG entries, and mid-iteration recovery. `/agile-dev:start` will offer to `git init` if your directory isn't a repo yet. `/agile-dev:improve` and `/agile-dev:change` will warn and ask, because a non-git existing codebase usually means you're in the wrong directory.
+
+**The Environment phase wants me to "Reopen in Container" — what is that?**
+After Backlog approval, the pipeline generates `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, and `.claude/settings.json`. In VS Code, press `Cmd+Shift+P` → **Dev Containers: Reopen in Container**; Cursor and other container-aware editors have the same action. Claude restarts inside the container with all the right tools and permissions already wired up. From here on, all iteration work happens inside the container.
+
+**How do I pause in the middle of an iteration?**
+Close the Claude session at any approval checkpoint. `state.md` records where you are; the next `/agile-dev:iterate` resumes from the exact same phase.
+
+**What is `state.md`?**
+A markdown file at `.project-artifacts/state.md` tracking the current phase, the current epic, the backlog (with statuses), completed iterations, and releases. The pipeline reads it on every command. Run `/agile-dev:status` to see a human-readable summary at any time.
+
+**What is `pipeline-feedback.md`?**
+A separate file at `.project-artifacts/pipeline-feedback.md` capturing **meta-feedback about the pipeline tool itself** (not your project). The Retrospective phase prompts for it once per iteration and appends an entry if there's anything to record. To turn the file into pipeline improvements, open Claude Code in the `agile-dev-pipeline` repo and run `/agile-dev:improve` against it.
+
+**Something went wrong mid-iteration — how do I recover?**
+The pipeline has three tiers:
+1. **Loop back** — re-run a single phase that produced wrong output. Small fix, no work lost.
+2. **Split** — close the partial work as iteration N-A and replan the rest as N-B. Use when half the spec was wrong but what shipped is keepable.
+3. **Abandon** — record why and reset. Use when nothing is salvageable.
+Claude offers the appropriate tier when defects surface; you confirm.
+
+**A Retrospective said Architecture needs revising. Now what?**
+Run `/agile-dev:revise <phase>` (where `<phase>` is `vision`, `architecture`, or `backlog`). It redoes that foundation phase and cascades changes downstream. Only allowed at `Idle` (between iterations) and only when the Retrospective explicitly flagged it.
+
+**When do I run `/agile-dev:release`?**
+At a milestone — MVP done, public release, end of a stable batch. It bundles all iterations closed since the last release into a versioned release note (`releases/v<version>.md`), tags the CHANGELOG, and bumps the `version` field in `state.md`. Releases are explicit, not automatic per iteration.
+
+**Can I redo a phase I've already approved?**
+Yes. Edit `state.md` to set `current_phase` back to the phase you want to redo, then run `/agile-dev:iterate`. For a clean approach, use the **Tier 1 — Loop back** recovery flow described above; the pipeline will re-run the phase and re-checkpoint.
+
+**Can I run the pipeline without the dev container?**
+Not recommended. Foundation phases (Vision / Architecture / Backlog) run on the host fine — they only write markdown. But everything from Refinement onwards expects the container's permissions and tools to be in place. Skipping the container means you'll be prompted to approve every shell command Claude runs, and the generated `.claude/settings.json` allowlists won't match the host's tooling.
+
+**Where do I report bugs or request features in the pipeline itself?**
+Capture them in your project's `pipeline-feedback.md` during normal use (the Retrospective phase will prompt). For deliberate reports, open an issue at https://github.com/mateuszgruszczynski/agile-dev-pipeline.
 
 ---
 

@@ -17,7 +17,10 @@
 - Are there existing tools, processes, or systems this replaces? What do users currently do instead, and why is that not good enough?
 - What are users' biggest frustrations or pain points today?
 
-**Questions to ask the user if unclear:**
+**Example questions to draw from — adapt to the conversation, do not run as a script:**
+
+The list below is a non-exhaustive starter set. Pick the ones that close real gaps for *this* project, ask follow-ups based on the answers, and skip any that earlier answers have already covered. **Stop asking when you have enough information to produce every item in the Output section below** — running through every example question is not the goal; getting to a confident Output is.
+
 - "Is this intended for end users or developers/operators?"
 - "Do you have a preferred language, framework, or runtime?"
 - "Are there any existing systems this must integrate with?"

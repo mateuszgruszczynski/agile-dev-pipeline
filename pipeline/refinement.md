@@ -1,8 +1,6 @@
 # Refinement Phase
 
-**Purpose:** Elaborate the **backlog detail block** for this epic — the description, key scenarios, HLACs, out-of-scope, and risks captured during the Backlog phase — into a full, implementable spec with detailed Acceptance Criteria. The output is `i1-spec.md`. This is the most important phase — unclear specs cause rework.
-
-The backlog block is the seed; the spec is its full elaboration. Refer back to it but do not duplicate it — the spec replaces it as the source of truth for this iteration.
+**Purpose:** Elaborate the backlog detail block (description, key scenarios, HLACs, out-of-scope, risks) into a full implementable spec with detailed Acceptance Criteria. Output: `i1-spec.md` — the source of truth for this iteration; replaces the backlog block.
 
 **What to produce:**
 - Detailed description of the epic's scope
@@ -14,7 +12,10 @@ The backlog block is the seed; the spec is its full elaboration. Refer back to i
 - Performance or reliability requirements specific to this epic
 - Security considerations specific to this epic
 
-**Questions to ask the user if unclear:**
+**Example questions to draw from — adapt to the conversation, do not run as a script:**
+
+The list below is a non-exhaustive starter set. Pick the ones that close real gaps for *this* epic, ask follow-ups based on the answers, and skip any that the backlog detail block or earlier answers have already covered. **Stop asking when you have enough information to produce every item in the Output section below and every AC satisfies the Definition of Testability** — running through every example question is not the goal; getting to a confident, testable spec is.
+
 - "What should happen if [edge case]?"
 - "Is there a specific UI pattern you have in mind?"
 - "Should this be backwards compatible with anything?"
@@ -24,7 +25,12 @@ The backlog block is the seed; the spec is its full elaboration. Refer back to i
 - Before starting Refinement, confirm the picked epic satisfies the **Definition of Ready** in [definitions.md](definitions.md). If it doesn't, fix the backlog block first.
 - Before the Refinement checkpoint, confirm every AC satisfies the **Definition of Testability** in [definitions.md](definitions.md). If any AC fails DoT, rewrite it.
 
-**Use subagents:** after clarifying questions are answered, delegate spec drafting (including the AC list and any Mermaid diagrams) to a subagent and review the result yourself before the checkpoint.
+**Subagent — default for spec drafting.** Q&A stays with the orchestrator (interactive). After Q&A, delegate drafting to a subagent.
+
+- **Pass:** backlog detail block, user's answers, the Output requirements below. Tell it to apply DoT to every AC.
+- **Expect:** full spec content as a single result. Orchestrator reviews, fixes, writes `i1-spec.md`.
+
+Skip only for trivial-scope epics (one-line FIX, single-AC tweak).
 
 **Output:**
 - Epic Spec document with ACs

@@ -41,7 +41,32 @@ Tool installation reference — include only what the stack needs:
 Always append at the end:
 ```dockerfile
 RUN npm install -g @anthropic-ai/claude-code
+
+# Container-only Claude Code settings — broader permissions that NEVER touch
+# the host's ~/.claude/settings.json. The container is sandboxed, so allowing
+# any Bash command and any directory is acceptable here even though it would
+# not be on the host.
+USER vscode
+RUN mkdir -p /home/vscode/.claude && cat > /home/vscode/.claude/settings.json <<'JSON'
+{
+  "permissions": {
+    "allow": ["Bash(*)", "Read(/**)", "Write(/**)", "Edit(/**)"],
+    "additionalDirectories": ["/"]
+  },
+  "extraKnownMarketplaces": {
+    "agile-dev": {
+      "source": { "source": "github", "repo": "mateuszgruszczynski/agile-dev-pipeline" }
+    }
+  },
+  "enabledPlugins": {
+    "agile-dev@agile-dev": true
+  }
+}
+JSON
+USER root
 ```
+
+The bake of `extraKnownMarketplaces` and `enabledPlugins` is what makes the host-installed `agile-dev` plugin visible inside the container — Claude looks at `enabledPlugins` to decide what to load, and looks at `~/.claude/plugins/` (bind-mounted from host, see Step 3) for the actual files. If the user has additional plugins they want available inside the container, they edit this baked block.
 
 ---
 
@@ -51,7 +76,10 @@ RUN npm install -g @anthropic-ai/claude-code
 {
   "name": "<project-slug>-dev",
   "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "vscode",
   "mounts": [
+    "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.claude/plugins,target=/home/vscode/.claude/plugins,type=bind,consistency=cached",
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
   ],
   "remoteEnv": {
@@ -65,13 +93,24 @@ RUN npm install -g @anthropic-ai/claude-code
 }
 ```
 
-Include the Docker socket mount only if the stack uses Docker. The `ANTHROPIC_API_KEY` passthrough makes Claude Code work inside the container without baking the key into the image.
+The two Claude mounts share host auth and plugins **without sharing host permissions**:
+- `~/.claude.json` — OAuth tokens + MCP configs + per-project trust. No re-auth after Reopen in Container.
+- `~/.claude/plugins/` — plugin code/cache. Combined with the container's own baked `~/.claude/settings.json` (Step 2), the host-installed plugin runs inside the container.
+
+Not shared: host `~/.claude/settings.json` (so the container's `Bash(*)` allowlist doesn't bleed onto the host), and conversation history (`projects/`, `sessions/`, `history.jsonl`).
+
+Notes:
+- Windows hosts (no WSL): use `${localEnv:USERPROFILE}` instead of `${localEnv:HOME}`.
+- `remoteUser: vscode` must match the target path `/home/vscode/.claude/...`. Do not change one without the other.
+- Linux host with non-1000 UID: may need `containerUser` / `updateRemoteUserUID` to make the bind mounts writable.
+- Include the Docker socket mount only if the stack uses Docker.
+- `ANTHROPIC_API_KEY` passthrough is a fallback for API-key auth users; OAuth users get auth from the mounted `~/.claude.json`.
 
 ---
 
-## Step 4 — Generate `.claude/settings.json`
+## Step 4 — Generate project `.claude/settings.json`
 
-Generate a project-level Claude Code settings file with an allowlist scoped to this project's stack.
+This is a separate file from the container's `/home/vscode/.claude/settings.json` baked in Step 2. The project-level file lives at the workspace root, applies whenever the project is opened (host **or** container), and carries the conservative per-stack allowlist. The container also gets the broader `Bash(*)` from Step 2; on the host, only this project-level file applies. Both exist on purpose.
 
 Always include the base allowlist:
 
