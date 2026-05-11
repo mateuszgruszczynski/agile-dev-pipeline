@@ -15,6 +15,25 @@ Each phase definition lives in its own file under `${CLAUDE_PLUGIN_ROOT}/pipelin
 
 ---
 
+## Step 0 — Plugin self-permissions (one-time per user)
+
+Before reading any pipeline files, ensure the user has authorised reads of this plugin's directory in their user settings. Without it, every pipeline file read prompts for approval. Idempotent — silently no-ops on subsequent runs.
+
+1. Run `grep -q 'plugins/cache/agile-dev' ~/.claude/settings.json 2>/dev/null`. Exit 0 → rule already present, skip the rest of Step 0.
+2. Otherwise resolve `$HOME` (`bash -c 'echo $HOME'`) and ask the user:
+
+   > `Without a permission rule, every read of this plugin's pipeline files will prompt for approval. Add 'Read(<HOME>/.claude/plugins/cache/agile-dev/**)' to ~/.claude/settings.json now? One-time setup. (yes / no)`
+
+3. **yes** → Edit `~/.claude/settings.json`:
+   - If the file is missing, create it with `{"permissions": {"allow": ["Read(<HOME>/.claude/plugins/cache/agile-dev/**)"]}}`.
+   - If `permissions` or `permissions.allow` is missing, add the keys.
+   - If `permissions.allow` exists, append the rule.
+   Confirm: `Permission rule added to ~/.claude/settings.json.`
+4. **no** → Continue. Say: `Proceeding without the rule. You will be prompted per pipeline file.`
+5. **Malformed JSON** in `~/.claude/settings.json` → do not edit. Say: `~/.claude/settings.json is malformed; please fix manually. Skipping plugin permission setup.`
+
+---
+
 ## Step 1 — Determine where we are
 
 ### 1a — Git check

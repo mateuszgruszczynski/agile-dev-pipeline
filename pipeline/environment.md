@@ -79,7 +79,6 @@ The bake of `extraKnownMarketplaces` and `enabledPlugins` is what makes the host
   "remoteUser": "vscode",
   "mounts": [
     "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/.claude/plugins,target=/home/vscode/.claude/plugins,type=bind,consistency=cached",
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
   ],
   "remoteEnv": {
@@ -93,16 +92,17 @@ The bake of `extraKnownMarketplaces` and `enabledPlugins` is what makes the host
 }
 ```
 
-The two Claude mounts share host auth and plugins **without sharing host permissions**:
-- `~/.claude.json` — OAuth tokens + MCP configs + per-project trust. No re-auth after Reopen in Container.
-- `~/.claude/plugins/` — plugin code/cache. Combined with the container's own baked `~/.claude/settings.json` (Step 2), the host-installed plugin runs inside the container.
+Only the auth file is bind-mounted:
+- `~/.claude.json` — OAuth tokens + MCP configs + per-project trust. Sharing this means no re-authentication after Reopen in Container.
 
-Not shared: host `~/.claude/settings.json` (so the container's `Bash(*)` allowlist doesn't bleed onto the host), and conversation history (`projects/`, `sessions/`, `history.jsonl`).
+**Do not bind-mount `~/.claude/plugins/`.** Claude Code's plugin registry files (`installed_plugins.json`, `known_marketplaces.json`) store absolute host paths — they break inside the container's Linux filesystem and the plugin fails to load. The container manages its own plugin install: Step 2's baked `~/.claude/settings.json` includes `extraKnownMarketplaces` + `enabledPlugins` for `agile-dev`, so Claude Code can fetch the plugin on first start. If it doesn't auto-fetch, the user runs `/plugin install agile-dev@agile-dev` once inside the container (Step 5 covers this).
+
+Not shared: host `~/.claude/settings.json` (so the container's broad `Bash(*)` allowlist doesn't bleed onto the host), and conversation history (`projects/`, `sessions/`, `history.jsonl`).
 
 Notes:
 - Windows hosts (no WSL): use `${localEnv:USERPROFILE}` instead of `${localEnv:HOME}`.
 - `remoteUser: vscode` must match the target path `/home/vscode/.claude/...`. Do not change one without the other.
-- Linux host with non-1000 UID: may need `containerUser` / `updateRemoteUserUID` to make the bind mounts writable.
+- Linux host with non-1000 UID: may need `containerUser` / `updateRemoteUserUID` to make the auth bind mount writable.
 - Include the Docker socket mount only if the stack uses Docker.
 - `ANTHROPIC_API_KEY` passthrough is a fallback for API-key auth users; OAuth users get auth from the mounted `~/.claude.json`.
 
@@ -151,13 +151,32 @@ Add stack-specific entries on top:
 
 ## Step 5 — Present and instruct
 
-Show the three generated files to the user. Then say:
+Detect the user's editor before presenting instructions. Run:
 
-> The dev container is ready. To continue:
-> - **VS Code:** press `Cmd+Shift+P` → **Dev Containers: Reopen in Container**
-> - **Cursor / other editors:** use the equivalent "Reopen in Container" action
+```bash
+echo "TERM_PROGRAM=$TERM_PROGRAM"
+```
+
+Map the value to a specific instruction:
+
+| `TERM_PROGRAM` | Editor | Reopen action |
+|---|---|---|
+| `vscode` | VS Code or Cursor (Cursor is a VS Code fork; same env var) | macOS: `Cmd+Shift+P` → **Dev Containers: Reopen in Container**. Linux/Windows: `Ctrl+Shift+P` → same. |
+| `JetBrains-JediTerm` | IntelliJ family (IDEA / PyCharm / WebStorm / GoLand / RustRover / …) | Right-click `.devcontainer/devcontainer.json` → **Dev Containers** → **Create Dev Container and Mount Sources**. Alternatively use the JetBrains Gateway plugin. |
+| `WarpTerminal` / `Apple_Terminal` / `iTerm.app` / empty | Standalone terminal (not running inside a container-aware editor) | Open the project in VS Code or Cursor first, then use the VS Code / Cursor action above. |
+
+Show the three generated files, then present the matching instruction.
+
+After the user confirms they are inside the container, also tell them:
+
+> Inside the container, first verify the plugin is loaded: type `/plugin list`. If `agile-dev` is listed, you're set — run `/agile-dev:iterate` to start the first iteration.
 >
-> Once inside the container, run `/agile-dev:iterate` to begin the first iteration phase.
+> If `agile-dev` is **not** listed (Claude Code didn't auto-install from the baked `enabledPlugins`), run once:
+> ```
+> /plugin marketplace add mateuszgruszczynski/agile-dev-pipeline
+> /plugin install agile-dev@agile-dev
+> ```
+> Then `/agile-dev:iterate`. The plugin is now installed in the container; it persists until you rebuild the container without cache.
 
 **If hybrid mode (native GUI app):** also tell the user:
 

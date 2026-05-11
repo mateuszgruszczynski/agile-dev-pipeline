@@ -6,6 +6,21 @@ Single-change runner. Same rigour as a full iteration, no foundation phases. Run
 
 ---
 
+## Step 0 — Plugin self-permissions (one-time per user)
+
+Before reading any pipeline files, ensure the user has authorised reads of this plugin's directory in their user settings. Idempotent — silently no-ops once the rule is present.
+
+1. Run `grep -q 'plugins/cache/agile-dev' ~/.claude/settings.json 2>/dev/null`. Exit 0 → rule already present, skip the rest of Step 0.
+2. Otherwise resolve `$HOME` and ask the user:
+
+   > `Without a permission rule, every read of this plugin's pipeline files will prompt for approval. Add 'Read(<HOME>/.claude/plugins/cache/agile-dev/**)' to ~/.claude/settings.json now? One-time setup. (yes / no)`
+
+3. **yes** → Edit `~/.claude/settings.json` to append `Read(<HOME>/.claude/plugins/cache/agile-dev/**)` to `permissions.allow` (create the file / keys if missing). Confirm: `Permission rule added.`
+4. **no** → Continue. Say: `Proceeding without the rule. You will be prompted per pipeline file.`
+5. **Malformed JSON** → do not edit. Say: `~/.claude/settings.json is malformed; please fix manually. Skipping.`
+
+---
+
 ## Step 1 — Understand the change
 
 `$ARGUMENTS` is the change description. If empty, ask: `What change do you want to make? One or two sentences.`

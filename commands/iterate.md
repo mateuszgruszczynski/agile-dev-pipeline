@@ -6,6 +6,21 @@ Iteration phase runner. Runs the iteration loop forward through every phase unti
 
 ---
 
+## Step 0 — Plugin self-permissions (one-time per user)
+
+Before reading any pipeline files, ensure the user has authorised reads of this plugin's directory in their user settings. Idempotent — silently no-ops once the rule is present.
+
+1. Run `grep -q 'plugins/cache/agile-dev' ~/.claude/settings.json 2>/dev/null`. Exit 0 → rule already present, skip the rest of Step 0.
+2. Otherwise resolve `$HOME` and ask the user:
+
+   > `Without a permission rule, every read of this plugin's pipeline files will prompt for approval. Add 'Read(<HOME>/.claude/plugins/cache/agile-dev/**)' to ~/.claude/settings.json now? One-time setup. (yes / no)`
+
+3. **yes** → Edit `~/.claude/settings.json` to append `Read(<HOME>/.claude/plugins/cache/agile-dev/**)` to `permissions.allow` (create the file / keys if missing). Confirm: `Permission rule added.`
+4. **no** → Continue. Say: `Proceeding without the rule. You will be prompted per pipeline file.`
+5. **Malformed JSON** → do not edit. Say: `~/.claude/settings.json is malformed; please fix manually. Skipping.`
+
+---
+
 ## Step 1 — Validate state
 
 Read `.project-artifacts/state.md`.
@@ -16,6 +31,12 @@ Read `.project-artifacts/state.md`.
   - Load `${CLAUDE_PLUGIN_ROOT}/pipeline/environment.md` and `.project-artifacts/f2-architecture.md`.
   - Generate `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, project `.claude/settings.json`.
   - ⛳ CHECKPOINT Environment: user confirms they are inside the container. Mark `Environment ✓` in `state.md`.
+
+**Container check** — if `Environment ✓` is marked in `state.md`, iteration phases must run inside the dev container. Run `test -f /.dockerenv && echo INSIDE || echo OUTSIDE`. If the result is `OUTSIDE`, refuse:
+
+> `You're on the host, but iteration phases must run inside the dev container. Reopen the project in the container (VS Code / Cursor: Cmd+Shift+P → "Dev Containers: Reopen in Container"; JetBrains: right-click .devcontainer/devcontainer.json → Dev Containers → Create Dev Container and Mount Sources), then re-run /agile-dev:iterate.`
+
+Then stop. Do not proceed to Step 2.
 
 If `$ARGUMENTS` is provided, treat it as an epic-name override. See *Argument behaviour* at the bottom.
 

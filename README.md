@@ -159,6 +159,18 @@ Updates handle file removals cleanly — orphaned files from older versions are 
 /plugin uninstall agile-dev
 ```
 
+### After install — a one-time permission rule
+
+Claude Code does not currently let a plugin pre-authorise reads of its own files via the shipped `settings.json`. Without a rule, you would be prompted to approve every read of the pipeline's definition files (`pipeline/vision.md`, `pipeline/architecture.md`, …).
+
+The pipeline handles this automatically: the first time you run `/agile-dev:start`, `/agile-dev:improve`, `/agile-dev:change`, or `/agile-dev:iterate`, Step 0 of the command checks your `~/.claude/settings.json` and, if no rule covers the plugin, asks you once: *"Add `Read(<your-home>/.claude/plugins/cache/agile-dev/**)` to your user settings?"*. Reply **yes** and you'll never be prompted for a pipeline file again.
+
+If you'd rather add the rule manually, drop this into the `permissions.allow` array in `~/.claude/settings.json` (replace `<HOME>` with your actual home directory):
+
+```json
+"Read(<HOME>/.claude/plugins/cache/agile-dev/**)"
+```
+
 ---
 
 ## Usage
