@@ -84,6 +84,7 @@ The bake of `extraKnownMarketplaces` and `enabledPlugins` is what makes the host
   "remoteEnv": {
     "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
   },
+  "postCreateCommand": "claude plugin marketplace add mateuszgruszczynski/agile-dev-pipeline 2>/dev/null; claude plugin install agile-dev@agile-dev",
   "customizations": {
     "vscode": {
       "extensions": ["anthropic.claude-code"]
@@ -95,7 +96,9 @@ The bake of `extraKnownMarketplaces` and `enabledPlugins` is what makes the host
 Only the auth file is bind-mounted:
 - `~/.claude.json` — OAuth tokens + MCP configs + per-project trust. Sharing this means no re-authentication after Reopen in Container.
 
-**Do not bind-mount `~/.claude/plugins/`.** Claude Code's plugin registry files (`installed_plugins.json`, `known_marketplaces.json`) store absolute host paths — they break inside the container's Linux filesystem and the plugin fails to load. The container manages its own plugin install: Step 2's baked `~/.claude/settings.json` includes `extraKnownMarketplaces` + `enabledPlugins` for `agile-dev`, so Claude Code can fetch the plugin on first start. If it doesn't auto-fetch, the user runs `/plugin install agile-dev@agile-dev` once inside the container (Step 5 covers this).
+**Do not bind-mount `~/.claude/plugins/`.** Claude Code's plugin registry files (`installed_plugins.json`, `known_marketplaces.json`) store absolute host paths — they break inside the container's Linux filesystem and the plugin fails to load. The container manages its own plugin install at container creation time via `postCreateCommand` (above), which runs once per container build and installs `agile-dev` directly from GitHub into the container's own `~/.claude/plugins/` with correct container-local paths. Step 2's baked `~/.claude/settings.json` (with `extraKnownMarketplaces` + `enabledPlugins`) is also still in place, so even if `postCreateCommand` runs second the marketplace is already registered.
+
+The `2>/dev/null` on the first command swallows errors from re-adding an already-registered marketplace (which the bake in Step 2 may have done). The install command is idempotent.
 
 Not shared: host `~/.claude/settings.json` (so the container's broad `Bash(*)` allowlist doesn't bleed onto the host), and conversation history (`projects/`, `sessions/`, `history.jsonl`).
 
@@ -169,14 +172,13 @@ Show the three generated files, then present the matching instruction.
 
 After the user confirms they are inside the container, also tell them:
 
-> Inside the container, first verify the plugin is loaded: type `/plugin list`. If `agile-dev` is listed, you're set — run `/agile-dev:iterate` to start the first iteration.
+> The `postCreateCommand` in `devcontainer.json` should have already installed the `agile-dev` plugin during container creation. Verify with `/plugin list` — `agile-dev` should be listed. Then run `/agile-dev:iterate` to start the first iteration.
 >
-> If `agile-dev` is **not** listed (Claude Code didn't auto-install from the baked `enabledPlugins`), run once:
+> **Recovery (only if `/plugin list` does not show `agile-dev`)** — the postCreate install failed (network issue at creation time, or Claude CLI not yet available). Run manually:
 > ```
 > /plugin marketplace add mateuszgruszczynski/agile-dev-pipeline
 > /plugin install agile-dev@agile-dev
 > ```
-> Then `/agile-dev:iterate`. The plugin is now installed in the container; it persists until you rebuild the container without cache.
 
 **If hybrid mode (native GUI app):** also tell the user:
 
