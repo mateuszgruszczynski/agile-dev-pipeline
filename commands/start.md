@@ -17,20 +17,82 @@ Each phase definition lives in its own file under `${CLAUDE_PLUGIN_ROOT}/pipelin
 
 ## Step 0 — Plugin self-permissions (one-time per user)
 
-Before reading any pipeline files, ensure the user has authorised reads of this plugin's directory in their user settings. Without it, every pipeline file read prompts for approval. Idempotent — silently no-ops on subsequent runs.
+Before reading any pipeline files, ensure the user has authorised reads of this plugin's directory in their user settings. Two rules are added together: a narrow scoped rule and a broader plugins-tree rule. Both are needed because Claude Code's permission matcher inconsistently honours broad `**` rules for the plugin install dir — the explicit narrow rule is a safety net. Idempotent — silently no-ops once both rules are present.
 
-1. Run `grep -q 'plugins/cache/agile-dev' ~/.claude/settings.json 2>/dev/null`. Exit 0 → rule already present, skip the rest of Step 0.
+1. Check whether both rules already exist:
+   ```
+   grep -qF 'plugins/cache/agile-dev/**' ~/.claude/settings.json 2>/dev/null && \
+     grep -qF 'plugins/**' ~/.claude/settings.json 2>/dev/null
+   ```
+   Exit 0 → both rules present, skip the rest of Step 0.
+
 2. Otherwise resolve `$HOME` (`bash -c 'echo $HOME'`) and ask the user:
 
-   > `Without a permission rule, every read of this plugin's pipeline files will prompt for approval. Add 'Read(<HOME>/.claude/plugins/cache/agile-dev/**)' to ~/.claude/settings.json now? One-time setup. (yes / no)`
+   > `Without permission rules, every read of this plugin's pipeline files will prompt for approval. Add the following two rules to ~/.claude/settings.json?`
+   > - `Read(<HOME>/.claude/plugins/cache/agile-dev/**)` — narrow, scoped to this plugin
+   > - `Read(<HOME>/.claude/plugins/**)` — broad, defense-in-depth for harness misses
+   >
+   > `One-time setup. (yes / no)`
 
-3. **yes** → Edit `~/.claude/settings.json`:
-   - If the file is missing, create it with `{"permissions": {"allow": ["Read(<HOME>/.claude/plugins/cache/agile-dev/**)"]}}`.
-   - If `permissions` or `permissions.allow` is missing, add the keys.
-   - If `permissions.allow` exists, append the rule.
-   Confirm: `Permission rule added to ~/.claude/settings.json.`
-4. **no** → Continue. Say: `Proceeding without the rule. You will be prompted per pipeline file.`
+3. **yes** → Edit `~/.claude/settings.json` to ensure both rules are in `permissions.allow`:
+   - File missing → create it with `{"permissions": {"allow": ["Read(<HOME>/.claude/plugins/cache/agile-dev/**)", "Read(<HOME>/.claude/plugins/**)"]}}`.
+   - `permissions` or `permissions.allow` missing → add the keys.
+   - `permissions.allow` exists → append each missing rule (skip rules already present, idempotent).
+   Confirm: `Permission rules added to ~/.claude/settings.json.`
+4. **no** → Continue. Say: `Proceeding without the rules. You will be prompted per pipeline file.`
 5. **Malformed JSON** in `~/.claude/settings.json` → do not edit. Say: `~/.claude/settings.json is malformed; please fix manually. Skipping plugin permission setup.`
+
+---
+
+## Step 0.5 — Pipeline policy (one-time per project)
+
+Configure three policy knobs for this project: autonomy (how often we pause for approval), detail (how verbose artifacts are), and test_coverage (how much testing to produce). Stored at `.project-artifacts/policy.md`. Idempotent — silently no-ops once the file exists.
+
+1. Check `.project-artifacts/policy.md`:
+   - **Exists:** print one-line summary `Policy: <autonomy> / <detail> / <test_coverage>. Edit .project-artifacts/policy.md to change.` Skip the rest of Step 0.5.
+   - **Missing:** continue to step 2.
+
+2. Show the three knobs with recommended defaults; ask the user to pick:
+
+   > **Autonomy** — how often does the pipeline pause for your approval?
+   > - `user-driven` — every ⛳ checkpoint pauses; explicit approval for everything.
+   > - `semi-automatic` (recommended default) — conditional checkpoints auto-skip when work is straightforward; mandatory checkpoints still pause.
+   > - `ai-driven` — only Vision pauses; the rest runs without asking. For prototypes / exploratory work.
+   >
+   > **Detail** — how verbose are produced artifacts?
+   > - `full` (recommended default) — specs with rationale, ACs with out-of-scope, tasks with dependencies.
+   > - `sparse` — specs without lengthy rationale; just the facts.
+   > - `minimal` — one-line phase outputs; just enough to drive the next phase.
+   >
+   > **Test coverage** — how much testing does the pipeline produce?
+   > - `thorough` (recommended default) — BDD scenarios per AC, regression for touched code, full pyramid.
+   > - `minimal` — one happy-path scenario per AC; skip edge cases unless an AC names one.
+   > - `none` — skip Test Plan + Verification entirely. Manual smoke only. Prototypes / spikes only.
+   >
+   > Reply with three values (e.g. `semi-automatic full thorough`) or press Enter for the recommended defaults.
+
+3. Parse the response. Validate each value against its allowed set. If invalid, repeat the prompt with the error.
+
+4. **Risky-combination confirmation:** if `autonomy = ai-driven` AND `test_coverage = none`, ask:
+
+   > `Selected ai-driven + no tests. This means no human approvals (except Vision) AND no automated test gate. Code is produced with no test coverage and no checkpoint review. Suitable only for throwaway prototypes. Confirm? (yes / no)`
+
+   On no, return to step 2.
+
+5. Create `.project-artifacts/` if missing. Write `.project-artifacts/policy.md`:
+
+   ```markdown
+   # Pipeline Policy
+
+   autonomy: <chosen>
+   detail: <chosen>
+   test_coverage: <chosen>
+
+   ## Notes
+   <empty — add reasons or context here, or change values directly above>
+   ```
+
+6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage>. Stored in .project-artifacts/policy.md (edit by hand to change later).`
 
 ---
 
@@ -97,6 +159,7 @@ All outputs are persisted as markdown files so the pipeline survives session res
 ```
 .project-artifacts/
   state.md                            ← pipeline position, backlog, and per-iteration history
+  policy.md                           ← pipeline policy: autonomy / detail / test_coverage (set once at Step 0.5)
   pipeline-feedback.md                ← append-only meta-feedback about the agile-dev pipeline itself (created on first entry)
   f1-vision.md                        ← Vision output
   f2-architecture.md                  ← Architecture output

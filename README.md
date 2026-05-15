@@ -56,6 +56,18 @@ Claude: [inside the container, picks the first epic, runs Refinement → ... →
 
 Every time Claude produces a plan, spec, or decision, it stops and asks for your approval before continuing. You can redirect, ask for changes, or add context. The shift to "inside the dev container" happens once, between Foundation and the first iteration.
 
+### Pipeline policy — three knobs you set once per project
+
+Before any phase runs, you choose three things that control how the pipeline behaves for this project. Stored in `.project-artifacts/policy.md` — editable by hand at any time.
+
+| Knob | Options | What it controls |
+|---|---|---|
+| **autonomy** | `user-driven` / `semi-automatic` (default) / `ai-driven` | How often the pipeline pauses for your approval. `user-driven` = every checkpoint. `semi-automatic` = conditional checkpoints auto-skip when work is straightforward. `ai-driven` = only Vision pauses; everything else runs through. |
+| **detail** | `full` (default) / `sparse` / `minimal` | How verbose the produced artifacts are. `full` = current behaviour with rationale and edge cases. `sparse` = facts only, no narrative. `minimal` = one-line outputs, just enough to drive the next phase. |
+| **test_coverage** | `thorough` (default) / `minimal` / `none` | How much testing the pipeline produces. `thorough` = full pyramid. `minimal` = one happy-path scenario per AC. `none` = skips Test Plan + Verification entirely; manual smoke is the only gate. For prototypes. |
+
+The defaults match the pipeline's original behaviour, so existing projects don't change. You're asked once during `/agile-dev:start` / `/agile-dev:improve` / `/agile-dev:change`. Combining `ai-driven` with `none` triggers an extra confirmation since it removes both human and automated gates — only appropriate for throwaway code.
+
 ### The two halves: Foundation and Iteration
 
 ```
@@ -163,13 +175,15 @@ Updates handle file removals cleanly — orphaned files from older versions are 
 
 Claude Code does not currently let a plugin pre-authorise reads of its own files via the shipped `settings.json`. Without a rule, you would be prompted to approve every read of the pipeline's definition files (`pipeline/vision.md`, `pipeline/architecture.md`, …).
 
-The pipeline handles this automatically: the first time you run `/agile-dev:start`, `/agile-dev:improve`, `/agile-dev:change`, or `/agile-dev:iterate`, Step 0 of the command checks your `~/.claude/settings.json` and, if no rule covers the plugin, asks you once: *"Add `Read(<your-home>/.claude/plugins/cache/agile-dev/**)` to your user settings?"*. Reply **yes** and you'll never be prompted for a pipeline file again.
+The pipeline handles this automatically: the first time you run `/agile-dev:start`, `/agile-dev:improve`, `/agile-dev:change`, or `/agile-dev:iterate`, Step 0 of the command checks your `~/.claude/settings.json` and, if no rule covers the plugin, asks you once: *"Add `Read(<your-home>/.claude/plugins/cache/agile-dev/**)` to your user settings?"*. Reply **yes**, and from your next Claude Code session onwards the rule will be in effect — Claude reads `~/.claude/settings.json` once at session start, so the running session that added the rule still sees the old in-memory permission set and may prompt for the first few files; subsequent sessions don't.
 
 If you'd rather add the rule manually, drop this into the `permissions.allow` array in `~/.claude/settings.json` (replace `<HOME>` with your actual home directory):
 
 ```json
 "Read(<HOME>/.claude/plugins/cache/agile-dev/**)"
 ```
+
+**Heads-up: occasional prompts can still appear** even with the rule in place. Claude Code's permission matcher sometimes misses on transient reads even when an `allow` rule should match — a known harness behaviour, not a plugin or rule-syntax issue. Approving the prompt is harmless; if it gets noisy or repeats, file a `/feedback` report inside Claude Code with the specific path and rule. See the FAQ for details.
 
 ---
 
@@ -261,6 +275,7 @@ After the pipeline has run for a while, your project will contain a `.project-ar
 ```
 .project-artifacts/
   state.md                        ← current position, backlog, and per-iteration history
+  policy.md                       ← pipeline policy (autonomy / detail / test_coverage)
   pipeline-feedback.md            ← meta-feedback about the pipeline itself (created on first entry)
   ana-analysis.md                 ← codebase analysis (improve mode only)
   f1-vision.md                    ← approved vision and goals
@@ -293,11 +308,25 @@ The pipeline also generates `.devcontainer/Dockerfile`, `.devcontainer/devcontai
 
 ### Feeding pipeline issues back
 
-`pipeline-feedback.md` is the place to capture **meta-feedback about the pipeline tool itself** — things like ambiguous prompts, awkward orchestration, generated files that needed manual fixup, or surprising checkpoint behaviour. It is project-agnostic: anything project-specific stays in the per-iteration `i7-retro.md`. The Retrospective phase prompts for it once per iteration and appends entries automatically when there is something to record. To turn the file into pipeline improvements, open Claude Code in the `agile-dev-pipeline` repo, run `/agile-dev:improve` (or paste the file directly), and the entries become items in `IMPROVEMENTS.md` / epics.
+`pipeline-feedback.md` is the place to capture **meta-feedback about the pipeline tool itself** — things like ambiguous prompts, awkward orchestration, generated files that needed manual fixup, or surprising checkpoint behaviour. It is project-agnostic: anything project-specific stays in the per-iteration `i7-retro.md`. The Retrospective phase prompts for it once per iteration and appends entries automatically when there is something to record. To turn the file into pipeline improvements, open Claude Code in the `agile-dev-pipeline` repo, run `/agile-dev:improve` (or paste the file directly), and the entries become epics in the pipeline's own backlog. Larger architectural proposals that aren't ready for implementation live in `IDEAS.md` at this repo's root.
 
 ---
 
 ## FAQ
+
+**What is `policy.md` and how do I change it?**
+A markdown file at `.project-artifacts/policy.md` holding three project-wide settings: `autonomy`, `detail`, and `test_coverage`. Set once during the first foundation command (Step 0.5). To change later, open the file and edit the values directly — the orchestrator reads it at the start of every `/agile-dev:iterate` and `/agile-dev:change` session. There's no slash command for editing; hand-edit is intentional, since policy changes are rare and a deliberate decision.
+
+**What if I want different policies for different iterations?**
+Not supported in v1. Policy is project-wide. The workaround is to change `policy.md` between iterations and accept that you'll need to remember to switch it back. If per-iteration override becomes common, it's a future enhancement.
+
+**Can I disable tests entirely for a quick prototype?**
+Yes — set `test_coverage: none` in `.project-artifacts/policy.md`. The pipeline skips Test Plan and Verification phases entirely. Manual smoke at Integration becomes the only quality gate, and the Definition of Done adapts (`definitions.md` describes the changes). Combining this with `autonomy: ai-driven` triggers a confirmation prompt because you're removing both human approval and automated test gates — appropriate only for throwaway code.
+
+**Why am I being prompted for plugin files even though Step 0 added a permission rule?**
+Two reasons depending on when the prompt fires.
+First-session quirk — Step 0 writes the rule to `~/.claude/settings.json` mid-session, but Claude Code reads that file once at session start. So the running session still has the old in-memory permission set and may prompt for the first few plugin files. From the next session onwards the rule is loaded at startup and the path is silently allowed.
+Intermittent harness misses — even with the rule loaded correctly, Claude Code's permission matcher occasionally fails to recognise a covered path on a transient read. This is a known harness behaviour, not a plugin or rule-syntax problem. Approving the prompt is harmless. If it gets noisy or repeats, file a `/feedback` report inside Claude Code with the specific path and the rule from your settings.
 
 **Do I really need to be in a git repository?**
 Yes. The pipeline relies on git for commits, history, CHANGELOG entries, and mid-iteration recovery. `/agile-dev:start` will offer to `git init` if your directory isn't a repo yet. `/agile-dev:improve` and `/agile-dev:change` will warn and ask, because a non-git existing codebase usually means you're in the wrong directory.

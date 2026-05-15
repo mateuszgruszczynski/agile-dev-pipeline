@@ -70,4 +70,13 @@ If DoT fails, the cheapest fix is almost always rewriting the AC, not adding mor
 - [integration.md](integration.md) — Integration cannot be APPROVED until every DoD condition holds.
 - [iterate.md](../commands/iterate.md), Step 4 — closing the iteration is gated on a passing Integration checkpoint, which is gated on DoD.
 
+**Policy effects on DoD** (driven by `.project-artifacts/policy.md`):
+
+| Policy | DoD adaptation |
+|---|---|
+| `test_coverage = thorough` (default) | All conditions above apply unchanged. |
+| `test_coverage = minimal` | Out-of-process scenarios are limited to happy paths; "no regressions" still applies but is measured against the reduced scenario set. AC trace still required (one happy-path scenario per AC is enough). |
+| `test_coverage = none` | Drop "Full in-process suite passes", "Full out-of-process suite passes", and "Every AC traces to ≥1 passing scenario" from the DoD. Replace with: "Production build succeeds. Application starts and connects. Manual smoke test passes. Each AC marked pass/fail in the manual-smoke walkthrough with a one-line note in `i6-int.md`." `i5-verify.md` is not produced and is not part of DoD. |
+| `detail` and `autonomy` axes | Do not change DoD conditions; they only change verbosity / approval behaviour, not what counts as "done". |
+
 If DoD fails, fix it before approving Integration. Do not defer DoD failures to the next iteration without an explicit decision in Retrospective and a follow-up FIX epic in the backlog.

@@ -96,4 +96,16 @@ Assign **both** axes per scenario. The level decides which phase owns the test; 
 **Output:**
 - Acceptance test scenarios list (document or table)
 
-**⛳ CHECKPOINT Test Plan:** User reviews the plan and confirms it correctly captures expected behaviour. No implementation begins until the plan is approved.
+**Policy effects:**
+
+`test_coverage` axis:
+- `thorough` (default) — full behaviour above: ≥1 scenario per AC plus edge / failure / regression scenarios.
+- `minimal` — one happy-path scenario per AC; skip edge-case and failure-path scenarios unless an AC explicitly names one. No regression scenarios unless the touched code has no existing tests at all.
+- `none` — this phase is **skipped entirely** by the orchestrator; `i3-test-plan.md` is not produced. Iteration goes Decomposition → Development (no Test Plan, no Verification). DoD adapts accordingly (see definitions.md).
+
+`detail` axis (applies when `test_coverage` is `thorough` or `minimal`):
+- `full` — full BDD scenarios with Given / When / Then / And + Notes per scenario.
+- `sparse` — Given / When / Then only, no Notes block.
+- `minimal` — scenario ID + one-line scenario name + level/type tag + AC reference. No Given/When/Then. The orchestrator can fill the BDD later if needed.
+
+**⛳ CHECKPOINT Test Plan:** User reviews the plan and confirms it correctly captures expected behaviour. No implementation begins until the plan is approved. (Skipped entirely when `test_coverage = none`.)

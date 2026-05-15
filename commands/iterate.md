@@ -8,15 +8,25 @@ Iteration phase runner. Runs the iteration loop forward through every phase unti
 
 ## Step 0 — Plugin self-permissions (one-time per user)
 
-Before reading any pipeline files, ensure the user has authorised reads of this plugin's directory in their user settings. Idempotent — silently no-ops once the rule is present.
+Before reading any pipeline files, ensure the user has authorised reads of this plugin's directory in their user settings. Two rules together: narrow + broad. Both are needed because Claude Code's permission matcher inconsistently honours broad `**` rules for the plugin dir. Idempotent — silently no-ops once both rules are present.
 
-1. Run `grep -q 'plugins/cache/agile-dev' ~/.claude/settings.json 2>/dev/null`. Exit 0 → rule already present, skip the rest of Step 0.
-2. Otherwise resolve `$HOME` and ask the user:
+1. Check whether both rules exist:
+   ```
+   grep -qF 'plugins/cache/agile-dev/**' ~/.claude/settings.json 2>/dev/null && \
+     grep -qF 'plugins/**' ~/.claude/settings.json 2>/dev/null
+   ```
+   Exit 0 → both rules present, skip the rest of Step 0.
 
-   > `Without a permission rule, every read of this plugin's pipeline files will prompt for approval. Add 'Read(<HOME>/.claude/plugins/cache/agile-dev/**)' to ~/.claude/settings.json now? One-time setup. (yes / no)`
+2. Otherwise resolve `$HOME` and ask:
 
-3. **yes** → Edit `~/.claude/settings.json` to append `Read(<HOME>/.claude/plugins/cache/agile-dev/**)` to `permissions.allow` (create the file / keys if missing). Confirm: `Permission rule added.`
-4. **no** → Continue. Say: `Proceeding without the rule. You will be prompted per pipeline file.`
+   > `Without permission rules, every read of this plugin's pipeline files will prompt for approval. Add these two rules to ~/.claude/settings.json?`
+   > - `Read(<HOME>/.claude/plugins/cache/agile-dev/**)` — narrow
+   > - `Read(<HOME>/.claude/plugins/**)` — broad
+   >
+   > `One-time setup. (yes / no)`
+
+3. **yes** → Edit `~/.claude/settings.json` to ensure both rules are in `permissions.allow` (create file / keys / rules as needed; idempotent on existing rules). Confirm: `Permission rules added.`
+4. **no** → Continue. Say: `Proceeding without the rules. You will be prompted per pipeline file.`
 5. **Malformed JSON** → do not edit. Say: `~/.claude/settings.json is malformed; please fix manually. Skipping.`
 
 ---
@@ -61,9 +71,22 @@ If `$ARGUMENTS` is provided, treat it as an epic-name override. See *Argument be
 
 ## Step 3 — Run phases continuously
 
-Read the phase file for `current_phase`. Load artifacts listed in the phase's `Load:` line — but **skip Read calls for files already in this session's context** (the orchestrator auto-continues across phases, so most prior artifacts are already loaded). The `Load:` list is a requirement, not a sequence of Read calls.
+**Load policy first.** Read `.project-artifacts/policy.md` once at session start. The three values control orchestrator behaviour for every phase below:
 
-**After each phase finishes** (checkpoint APPROVE, auto-continue, or no-checkpoint completion): advance `current_phase` in `state.md` and run the next phase in the same session. Do not ask the user to re-invoke `/agile-dev:iterate`. The loop pauses only at: a ⛳ CHECKPOINT awaiting APPROVE, the user closing the session, or the Retrospective iteration-boundary choice.
+- **autonomy override** — applied globally to all checkpoints in this session:
+  - `user-driven` → every ⛳ checkpoint (mandatory and conditional) pauses for explicit APPROVE. Auto-skip / auto-continue rules are disabled.
+  - `semi-automatic` → phase-specific rules apply as written. Mandatory checkpoints pause; conditional ones auto-skip / auto-continue per their phase rule.
+  - `ai-driven` → all checkpoints auto-continue except Vision (covered in Foundation). Retrospective produces its artifact and auto-loops to the next iteration. User can interrupt only by closing the session.
+- **test_coverage override** — applied to the phase sequence:
+  - `thorough` / `minimal` → run all seven iteration phases. Test Plan and Verification scope adjusts internally (see those phase files).
+  - `none` → **skip Test Plan and Verification entirely**. The phase sequence becomes Refinement → Decomposition → Development → Integration → Retrospective. When advancing past Decomposition, set `current_phase: Development` (not Test Plan). When advancing past Development, set `current_phase: Integration` (not Verification). Do not write `i3-test-plan.md` or `i5-verify.md`.
+- **detail override** — passed through to each phase (each phase file has a Policy effects section explaining its variants).
+
+If `policy.md` is missing (older project predating this feature, or a Foundation that never set policy), default to `semi-automatic / full / thorough` (matches the previous behaviour). Print a one-line note: `No policy.md found; defaulting to semi-automatic / full / thorough.`
+
+Read the phase file for `current_phase`. Load artifacts listed in the phase's `Load:` line — but **skip Read calls for files already in this session's context**. The `Load:` list is a requirement, not a sequence of Read calls.
+
+**After each phase finishes** (checkpoint APPROVE, auto-continue, or no-checkpoint completion): advance `current_phase` in `state.md` and run the next phase in the same session. Apply the test_coverage override above when deciding which next phase to run. Do not ask the user to re-invoke `/agile-dev:iterate`. The loop pauses only at: a ⛳ CHECKPOINT awaiting APPROVE (per the autonomy override), the user closing the session, or the Retrospective iteration-boundary choice (skipped for `ai-driven`).
 
 ---
 

@@ -4,6 +4,8 @@
 
 **Owns:** System-integration, E2E, and out-of-process Contract scenarios from the Test Plan. Levels and types are defined in [test-plan.md](test-plan.md) — do not duplicate that material here.
 
+> **Skipped entirely when `test_coverage = none`** in `.project-artifacts/policy.md`. The orchestrator goes Development → Integration, does not write `i5-verify.md`, and Integration's AC table changes to a manual-smoke check (see [integration.md](integration.md)).
+
 ---
 
 ## Inputs
@@ -90,3 +92,15 @@ Write `i5-verify.md`:
 - `i5-verify.md` written and accurate
 
 Fix any failure before Integration. No deferral.
+
+## Policy effects
+
+`test_coverage` axis:
+- `thorough` (default) — full behaviour above: implement every scenario, full AC coverage, mock-server stubs, real internal infra.
+- `minimal` — implement only the System-integration / E2E scenarios that exist in `i3-test-plan.md`. Under `test_coverage = minimal`, the Test Plan itself contains only happy-path scenarios — so this phase implements those happy paths only. No additional scenarios.
+- `none` — phase **skipped entirely**. Orchestrator goes Development → Integration. No `i5-verify.md`. Quality gate in Integration becomes manual smoke + the build passing.
+
+`detail` axis (applies to `i5-verify.md` content when phase runs):
+- `full` — full output as above.
+- `sparse` — drop the per-scenario "AC each covers" breakdown; keep counts and run results.
+- `minimal` — environment + run results table only (pass/fail counts).

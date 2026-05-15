@@ -50,7 +50,11 @@ USER vscode
 RUN mkdir -p /home/vscode/.claude && cat > /home/vscode/.claude/settings.json <<'JSON'
 {
   "permissions": {
-    "allow": ["Bash(*)", "Read(/**)", "Write(/**)", "Edit(/**)"],
+    "allow": [
+      "Bash(*)",
+      "Read(/**)", "Write(/**)", "Edit(/**)",
+      "Read(/home/vscode/.claude/plugins/**)"
+    ],
     "additionalDirectories": ["/"]
   },
   "extraKnownMarketplaces": {
@@ -66,7 +70,9 @@ JSON
 USER root
 ```
 
-The bake of `extraKnownMarketplaces` and `enabledPlugins` is what makes the host-installed `agile-dev` plugin visible inside the container — Claude looks at `enabledPlugins` to decide what to load, and looks at `~/.claude/plugins/` (bind-mounted from host, see Step 3) for the actual files. If the user has additional plugins they want available inside the container, they edit this baked block.
+The explicit `Read(/home/vscode/.claude/plugins/**)` is required even though `Read(/**)` is also listed: Claude Code's permission matcher inconsistently honours the broad `/**` rule when the actual read target is the plugin install dir. Same behaviour observed on host (where a `Read(/Users/<user>/.claude/plugins/cache/agile-dev/**)` rule is needed despite any broader rules). Listing both keeps the broad rule for general filesystem access and the narrow rule for the specific path that gets misses.
+
+The bake of `extraKnownMarketplaces` and `enabledPlugins` registers the marketplace and marks the plugin as enabled. Actual plugin code is installed at container creation time via `postCreateCommand` in `devcontainer.json` (Step 3). If the user wants additional plugins available inside the container, they edit this baked block AND add the install to `postCreateCommand`.
 
 ---
 

@@ -19,6 +19,15 @@ Do not include: what went well, what was hard, effort commentary, feelings — u
 
 **⛳ CHECKPOINT Retrospective:** user reviews the action list and backlog state before the next iteration begins. See [iterate.md](../commands/iterate.md) Step 4 for the iteration-boundary behaviour.
 
+**Policy effects:**
+
+`detail` axis (applies to `i7-retro.md` content):
+- `full` — action items with rationale, backlog deltas with reasons.
+- `sparse` — action items as one-liners; backlog deltas without prose justification.
+- `minimal` — action items only, one line each. No backlog-delta prose; rely on `state.md` + `f3-backlog.md` for the authoritative state.
+
+`autonomy = ai-driven` — the iteration-boundary checkpoint does **not** pause. The retrospective produces `i7-retro.md` and the orchestrator auto-loops to the next iteration immediately. To stop the loop, the user closes the session.
+
 **Early-trigger paths:** Retrospective can be entered before Integration via mid-iteration recovery. See *Mid-iteration recovery* in [iterate.md](../commands/iterate.md). Tier 2 splits the iteration (N-A closes here, N-B replans). Tier 3 abandons. Keep retros tight in both cases.
 
 ---

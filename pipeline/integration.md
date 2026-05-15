@@ -81,3 +81,16 @@ DoD: Integration cannot be APPROVED until every condition in [definitions.md](de
 ---
 
 **⛳ CHECKPOINT Integration:** user reviews `i6-int.md` + `i5-verify.md`, watches the demo or signs off the checklist. Epic accepted or returned with specific feedback. (Conditional auto-continue rules live in [iterate.md](../commands/iterate.md).)
+
+## Policy effects
+
+`test_coverage` axis:
+- `thorough` / `minimal` — full behaviour above. AC table cites the Verification scenario(s) that prove each AC.
+- `none` — Verification phase was skipped, so there is no `i5-verify.md` and no Verification roll-up. The AC pass/fail table changes to a manual-smoke check: each AC is marked pass or fail based on the manual smoke walk-through, with a one-line note saying what the operator did to verify it. DoD's "every AC traces to a passing scenario" requirement drops; "manual smoke clean + build green" replaces it.
+
+`detail` axis (applies to `i6-int.md`):
+- `full` — full output above.
+- `sparse` — drop the demo script outcome section if no demo is applicable; drop the issues section if empty.
+- `minimal` — build status + smoke outcome + AC pass/fail table only. No verification roll-up paragraph, no demo section.
+
+`autonomy` axis: see [iterate.md](../commands/iterate.md) Step 3 — autonomy applies globally to checkpoint behaviour.

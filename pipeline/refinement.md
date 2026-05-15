@@ -36,4 +36,9 @@ Skip only for trivial-scope epics (one-line FIX, single-AC tweak).
 - Epic Spec document with ACs
 - Mermaid sequence or flow diagram for any non-trivial multi-step interaction (optional but recommended when the flow is hard to describe in prose)
 
+**Policy effects** (`detail` axis only — autonomy is handled in iterate.md / change.md):
+- `full` — full output above with rationale for each AC, out-of-scope section, edge cases narrative, optional Mermaid.
+- `sparse` — drop the per-AC rationale and the edge-case narrative. Keep ACs, out-of-scope, security/perf bullets, optional Mermaid.
+- `minimal` — ACs only (numbered list), one-line per AC. Out-of-scope as a single line if it's non-empty. No diagrams, no narrative.
+
 **⛳ CHECKPOINT Refinement:** User reviews and approves the spec and ACs. No implementation begins until approved.

@@ -59,4 +59,9 @@ Documentation tasks appear in the task list like any other task, with a role own
 **Output:**
 - Ordered task list with role assignments and dependencies
 
+**Policy effects** (`detail` axis):
+- `full` — task title + role + description + dependencies + testability/done condition.
+- `sparse` — task title + role + one-line description. Drop dependencies unless critical, drop testability note.
+- `minimal` — task title + role only (one line per task). No description, no deps.
+
 **⛳ CHECKPOINT Decomposition:** User reviews task breakdown and confirms nothing is missing or misassigned.
