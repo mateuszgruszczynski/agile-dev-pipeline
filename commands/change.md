@@ -79,7 +79,10 @@ Configure three policy knobs for this project: autonomy, detail, test_coverage. 
    > **Test coverage** — how much testing:
    > - `thorough` (recommended default), `minimal`, `none` (skips Test Plan + Verification).
    >
-   > Reply with three values (e.g. `semi-automatic full thorough`) or press Enter for the recommended defaults.
+   > **Packaging** — when does the pipeline produce a runnable artifact:
+   > - `each` (recommended default), `milestone` (only at /agile-dev:release), `final` (only on explicit user request).
+   >
+   > Reply with four values (e.g. `semi-automatic full thorough each`) or press Enter for the recommended defaults.
 
 3. Parse + validate.
 
@@ -95,12 +98,13 @@ Configure three policy knobs for this project: autonomy, detail, test_coverage. 
    autonomy: <chosen>
    detail: <chosen>
    test_coverage: <chosen>
+   packaging: <chosen>
 
    ## Notes
    <empty>
    ```
 
-6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage>.`
+6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging>.`
 
 ---
 

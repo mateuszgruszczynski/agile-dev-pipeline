@@ -66,7 +66,12 @@ Configure three policy knobs for this project: autonomy, detail, test_coverage. 
    > - `minimal` — one happy-path scenario per AC; skip edge cases.
    > - `none` — skip Test Plan + Verification entirely. Manual smoke only.
    >
-   > Reply with three values (e.g. `semi-automatic full thorough`) or press Enter for the recommended defaults.
+   > **Packaging** — when does the pipeline produce a runnable artifact:
+   > - `each` (recommended default) — every Integration packages to `dist/<NNN>-<slug>/`.
+   > - `milestone` — package only at `/agile-dev:release` boundaries.
+   > - `final` — package only on explicit user request.
+   >
+   > Reply with four values (e.g. `semi-automatic full thorough each`) or press Enter for the recommended defaults.
 
 3. Parse + validate. Repeat with error on invalid values.
 
@@ -82,12 +87,13 @@ Configure three policy knobs for this project: autonomy, detail, test_coverage. 
    autonomy: <chosen>
    detail: <chosen>
    test_coverage: <chosen>
+   packaging: <chosen>
 
    ## Notes
    <empty>
    ```
 
-6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage>.`
+6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging>.`
 
 ---
 

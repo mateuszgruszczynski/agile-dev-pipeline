@@ -124,6 +124,31 @@ Do not delete or rewrite the iteration entries — they remain the iteration-lev
 
 ---
 
+## Step 5.5 — Produce / collect the release artifact
+
+Read `.project-artifacts/policy.md` and the **Deliverable artifact** decision in `f2-architecture.md`. Behaviour depends on `packaging`:
+
+- **`packaging: each`** — each iteration already produced `dist/<NNN>-<slug>/`. Copy the **latest iteration's** `dist/` contents into `releases/v<version>/`:
+  ```bash
+  mkdir -p releases/v<version>
+  cp -r dist/<latest-iteration-dir>/* releases/v<version>/
+  ```
+  No build needed — the artifact is already there and already smoke-tested.
+
+- **`packaging: milestone`** or **`packaging: final`** — `dist/` is empty. Run the production build recipe now to produce the release artifact:
+  - For `docker-image`: `docker build -t <app>:<version> .` then `docker save <app>:<version> | gzip > releases/v<version>/image.tar.gz`.
+  - For other types: `./build.sh` and redirect output into `releases/v<version>/`.
+  - Smoke-test the produced artifact at the depth dictated by `test_coverage` (same rules as Integration step 7).
+
+Either way, in `releases/v<version>/` also write:
+- A copy of the **run instructions** from `f2-architecture.md` as `RUN.md`.
+- The **external runtime requirements** in the same file.
+- A `MANIFEST.txt` listing every file in the release directory with its sha256.
+
+The released artifact must be self-contained: copying `releases/v<version>/` to any machine that satisfies the runtime requirements should be enough to run the app — no code checkout, no compiler install, no pipeline knowledge required.
+
+---
+
 ## Step 6 — Update state.md
 
 1. Set `version: <new version>` at the top of `state.md` (add the field if missing).
@@ -143,11 +168,13 @@ Do not delete or rewrite the iteration entries — they remain the iteration-lev
 Tagging the release in version control is a destructive-ish action (creates a permanent tag). Do not run it automatically. Print the suggested commands and let the user run them:
 
 ```
-git add CHANGELOG.md .project-artifacts/state.md .project-artifacts/releases/v<version>.md
+git add CHANGELOG.md .project-artifacts/state.md .project-artifacts/releases/v<version>.md releases/v<version>/
 git commit -m "Release v<version>"
 git tag v<version>
 git push origin v<version>
 ```
+
+Note: by default `releases/v<version>/` contains built artifacts (binaries, image tarballs, etc.) that are usually too large for git. If your project is open-source / uses git LFS, commit them; otherwise add `releases/` to `.gitignore` and use GitHub Releases / a separate artifact store to host the actual files. The `releases/v<version>.md` notes file stays committed regardless.
 
 If the project is not under git, skip this step and say so.
 

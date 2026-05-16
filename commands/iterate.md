@@ -81,6 +81,10 @@ If `$ARGUMENTS` is provided, treat it as an epic-name override. See *Argument be
   - `thorough` / `minimal` → run all seven iteration phases. Test Plan and Verification scope adjusts internally (see those phase files).
   - `none` → **skip Test Plan and Verification entirely**. The phase sequence becomes Refinement → Decomposition → Development → Integration → Retrospective. When advancing past Decomposition, set `current_phase: Development` (not Test Plan). When advancing past Development, set `current_phase: Integration` (not Verification). Do not write `i3-test-plan.md` or `i5-verify.md`.
 - **detail override** — passed through to each phase (each phase file has a Policy effects section explaining its variants).
+- **packaging override** — applied at Integration's step 7:
+  - `each` → Integration packages a deliverable artifact in `dist/<NNN>-<slug>/` every iteration and smoke-tests it (per `test_coverage`).
+  - `milestone` → Integration skips packaging by default; the `/agile-dev:release` command produces the artifact at the release boundary.
+  - `final` → Integration skips packaging in normal iterations. The user explicitly requests a build via `/agile-dev:release` (or by editing `policy.md` to `each` for one iteration).
 
 If `policy.md` is missing (older project predating this feature, or a Foundation that never set policy), default to `semi-automatic / full / thorough` (matches the previous behaviour). Print a one-line note: `No policy.md found; defaulting to semi-automatic / full / thorough.`
 

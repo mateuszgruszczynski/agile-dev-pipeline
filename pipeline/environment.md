@@ -158,6 +158,52 @@ Add stack-specific entries on top:
 
 ---
 
+## Step 4.5 — Generate the production build recipe
+
+Read the **Deliverable artifact** decision from `f2-architecture.md`. Generate the recipe that Integration will use to produce the deployable artifact. This is **separate** from the dev-container Dockerfile generated in Step 2 — the dev container has Claude Code, build tools, debuggers, etc.; the production artifact must be slim and only contain what the running app needs.
+
+Choose the right template based on the deliverable type:
+
+| Deliverable type | Recipe to generate | Output location |
+|---|---|---|
+| `docker-image` | Project-root `Dockerfile` (multi-stage: build stage uses the dev tools, final stage is a slim runtime — `alpine`, `distroless`, or matching `slim` variant). Also `.dockerignore`. | `dist/<NNN>-<slug>/image.tar.gz` (via `docker save \| gzip` in Integration) |
+| `native-binary` | `build.sh` at project root running the language's static-build command (`go build -ldflags="-s -w"`, `cargo build --release`, etc.). For multiple target platforms, the script loops over them (or calls language-specific cross-compile). | `dist/<NNN>-<slug>/<binary-name>-<platform>` (one file per platform) |
+| `jar` / `war` | Ensure `pom.xml` / `build.gradle` produces a runnable JAR (Maven Shade or Spring Boot plugin; Gradle Shadow or bootJar). `build.sh` runs `mvn package` / `gradle build`. | `dist/<NNN>-<slug>/<app>.jar` |
+| `npm-bundle` | `build.sh` that runs the bundler (Vite / esbuild / webpack) and tars the output. | `dist/<NNN>-<slug>/<app>-bundle.tar.gz` |
+| `tarball` | `build.sh` that compiles (if needed) then tars the runnable directory. | `dist/<NNN>-<slug>/<app>.tar.gz` |
+| `platform-installer` | Stack-specific tooling (`pkg`, `wix`, `dpkg-deb`, `rpmbuild`, `electron-builder`). `build.sh` invokes the right one for each target platform. | `dist/<NNN>-<slug>/<app>-<version>.<ext>` |
+| `script` | A `build.sh` that bundles the script + its dependencies into a runnable archive (e.g. PyInstaller for Python, shc for bash, zipapp). | `dist/<NNN>-<slug>/<app>` |
+
+**For `docker-image` projects** the production `Dockerfile` looks like:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM <build-base> AS build
+WORKDIR /app
+COPY . .
+RUN <build commands>
+
+FROM <runtime-base>
+WORKDIR /app
+COPY --from=build /app/<artifact> /app/
+EXPOSE <port if applicable>
+CMD ["./<entrypoint>"]
+```
+
+Pick `<runtime-base>` per stack: Java → `eclipse-temurin:21-jre-alpine`, Go → `gcr.io/distroless/static`, Node → `node:20-alpine`, Python → `python:3.12-slim`, etc. The build stage can use the dev-container base image so build tools are available.
+
+**Cross-platform builds** (only when Architecture lists multiple target platforms):
+- Go: `GOOS=<os> GOARCH=<arch> go build` — handled in `build.sh` loop.
+- Rust: `cargo build --target <triple>` (requires `rustup target add <triple>`).
+- JVM / Node / Python: same JAR / bundle runs on every JVM-supported / Node-supported / Python-supported platform — no cross-build needed; the runtime requirement covers it.
+- Native (C, C++): cross-compile via Zig (`zig cc -target ...`) or per-platform builders; this is the hardest case — Environment flags it and may produce one platform now, the others as follow-up.
+
+**Always:**
+- Add `dist/` to `.gitignore` (the artifact is build output, not source).
+- Commit the recipe (`Dockerfile`, `build.sh`, build config additions) so the build is reproducible outside the pipeline.
+
+---
+
 ## Step 5 — Present and instruct
 
 Detect the user's editor before presenting instructions. Run:

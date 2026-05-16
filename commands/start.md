@@ -69,7 +69,12 @@ Configure three policy knobs for this project: autonomy (how often we pause for 
    > - `minimal` — one happy-path scenario per AC; skip edge cases unless an AC names one.
    > - `none` — skip Test Plan + Verification entirely. Manual smoke only. Prototypes / spikes only.
    >
-   > Reply with three values (e.g. `semi-automatic full thorough`) or press Enter for the recommended defaults.
+   > **Packaging** — when does the pipeline produce a runnable artifact (binary / jar / docker image / etc.) that you can copy to another machine and run?
+   > - `each` (recommended default) — every Integration produces a packaged artifact in `dist/<NNN>-<slug>/`. Best when you want to ship or demo each iteration.
+   > - `milestone` — package only when you run `/agile-dev:release` for a versioned release. Useful before MVP / during heavy churn when intermediate packages would just be noise.
+   > - `final` — package only on explicit user request (`/agile-dev:release` with a flag, or manual). Quietest option; appropriate for early prototypes.
+   >
+   > Reply with four values (e.g. `semi-automatic full thorough each`) or press Enter for the recommended defaults.
 
 3. Parse the response. Validate each value against its allowed set. If invalid, repeat the prompt with the error.
 
@@ -87,12 +92,13 @@ Configure three policy knobs for this project: autonomy (how often we pause for 
    autonomy: <chosen>
    detail: <chosen>
    test_coverage: <chosen>
+   packaging: <chosen>
 
    ## Notes
    <empty — add reasons or context here, or change values directly above>
    ```
 
-6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage>. Stored in .project-artifacts/policy.md (edit by hand to change later).`
+6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging>. Stored in .project-artifacts/policy.md (edit by hand to change later).`
 
 ---
 
