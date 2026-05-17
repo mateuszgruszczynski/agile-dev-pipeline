@@ -41,4 +41,6 @@ Skip only for trivial-scope epics (one-line FIX, single-AC tweak).
 - `sparse` — drop the per-AC rationale and the edge-case narrative. Keep ACs, out-of-scope, security/perf bullets, optional Mermaid.
 - `minimal` — ACs only (numbered list), one-line per AC. Out-of-scope as a single line if it's non-empty. No diagrams, no narrative.
 
+**Bundle handling** (when the iteration has more than one epic): produce a single `i1-spec.md` with one section per bundled epic. Each section has the same internal structure (description, scenarios, ACs, out-of-scope, edge cases, etc.). ACs are numbered with the parent epic ID for traceability — e.g. `EP-3.AC-1`, `EP-3.AC-2`, `EP-7.AC-1`. Delegate per-epic section drafting to subagents in parallel; the orchestrator assembles. For a single-epic iteration the spec is one flat document with no section headers (same as before).
+
 **⛳ CHECKPOINT Refinement:** User reviews and approves the spec and ACs. No implementation begins until approved.

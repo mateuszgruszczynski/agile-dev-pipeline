@@ -52,20 +52,46 @@ If `$ARGUMENTS` is provided, treat it as an epic-name override. See *Argument be
 
 ---
 
-## Step 2 — Pick next epic (only when no epic is in progress)
+## Step 2 — Pick next iteration's epic bundle (only when no iteration is in progress)
 
 `current_phase` is `Idle` / empty / legacy `Backlog`:
 
-1. Candidate selection:
-   - `$ARGUMENTS` provided: epic whose name matches it.
-   - Otherwise: the single highest-priority `TODO` epic.
-2. Unambiguous (exactly one candidate): announce `Starting iteration <N>: **<epic>** (Priority: <p>, Size: <s>).`, set `current_epic` and `current_phase: Refinement`, proceed to Step 3.
-3. Ambiguous (≥2 epics tied at top priority): list them and ask `Which epic next? (number / name)`. Wait, then proceed.
-4. Empty backlog: report `Backlog is empty — pipeline complete.` Stop.
+**Point values** (from `pipeline/backlog.md`):
 
-`current_phase` is an iteration phase (epic in flight):
+| Size | XS | S | M | L | XL | XXL |
+|---|---|---|---|---|---|---|
+| Points | 1.0 | 1.7 | 3.0 | 5.2 | 9.0 | 15.6 |
+
+**Budget:** read `iteration_size` from `.project-artifacts/policy.md` and look up its point value above. Default `xl` = 9 points.
+
+### Bundle selection algorithm
+
+1. **Load candidates.** Read `f3-backlog.md`. Take all epics with status `TODO`. Discard `DONE`, `IN_PROGRESS`, `BLOCKED`.
+2. **Filter unblocked.** Drop epics whose declared dependencies (from the epic detail block) include any epic not yet `DONE`. If a candidate's dependency is in the same TODO pool, it stays blocked until its blocker is scheduled and completed.
+3. **Order candidates.** Sort by priority (P1 first, then P2, then P3). Within the same priority, sort by size descending (larger first — fills budget faster). Stable tiebreak by submission order.
+4. **Build bundle (greedy, closer-to-budget):**
+   - If `$ARGUMENTS` is provided: parse it as one or more epic names (comma- or plus-separated). Use those as the bundle directly. Skip steps 5–7. Validate every named epic is in the unblocked TODO pool; if not, refuse.
+   - Otherwise: walk the ordered candidate list, accumulating points.
+     - If the bundle is empty (first candidate): add it unconditionally (rule: a single oversized epic is always allowed).
+     - For each subsequent candidate `c`: compute `stop_dev = |budget - sum|` and `add_dev = |budget - (sum + c.points)|`. If `add_dev < stop_dev`, add `c` and continue. If `add_dev ≥ stop_dev`, stop — current bundle is closer to budget.
+   - Add to the bundle any **dependent epics of bundled epics** that are themselves in the unblocked pool — only if they fit the same closer-to-budget rule. This avoids leaving a dependent stranded right after its blocker just shipped.
+5. **Show the bundle to the user:**
+
+   > `Next iteration <N> bundle (budget = <budget> pts / <size>; total = <sum> pts):`
+   > `  • EP-3 — Search index (L, 5.2 pts) P1`
+   > `  • EP-7 — Filter UI (M, 3.0 pts) P1`
+   > `Proceed? (yes / edit <add EP-x | remove EP-y> / no)`
+
+6. **edit** branch: parse the user's add/remove instructions, re-validate (dependencies unblocked, epic in TODO pool), recompute total, re-present. Loop until user replies yes or no.
+7. **yes** branch: set `current_epic` in `state.md` to a comma-separated list of epic names from the bundle. Mark each bundled epic as `IN_PROGRESS` in the Backlog table. Set `current_phase: Refinement`. Iteration directory slug derives from the first (highest-priority) epic: `iterations/<NNN>-<first-epic-slug>/`. Proceed to Step 3.
+
+8. **no / empty backlog:**
+   - Empty: report `Backlog is empty — pipeline complete.` Stop.
+   - User said no: stop. Say `Iteration not started.`
+
+`current_phase` is an iteration phase (bundle in flight):
 - `$ARGUMENTS` provided: refuse the override (see *Argument behaviour*). Stop.
-- Otherwise: proceed to Step 3 at the saved phase.
+- Otherwise: proceed to Step 3 at the saved phase. The bundle is whatever's listed in `current_epic`.
 
 ---
 
@@ -218,22 +244,25 @@ User chooses:
 After Retrospective is approved:
 
 1. **state.md:**
-   - Mark current epic `DONE` in Backlog table.
-   - Append to Completed iterations: `| <NNN> | <epic> | DONE | <YYYY-MM-DD> | <retro highlight or "No plan changes"> | iterations/<NNN>-<slug>/i7-retro.md |`
+   - Mark **every bundled epic** `DONE` in Backlog table.
+   - Append to Completed iterations: `| <NNN> | <epic-list-with-sizes> | DONE | <YYYY-MM-DD> | <retro highlight or "No plan changes"> | iterations/<NNN>-<first-epic-slug>/i7-retro.md |`
+     - Single epic: `EP-1 User auth (XL)`. Bundle: `EP-3 Search index (L) + EP-7 Filter UI (M) + EP-9 Pagination (M)`.
    - Clear `current_epic`; set `current_phase: Idle`; increment `iteration`.
    - All backlog epics `DONE` → also set `status: COMPLETE`.
 
 2. **CHANGELOG.md** at project root (Keep-a-Changelog format if file is new):
    ```markdown
-   ## [Iteration <NNN>] — <epic> — <YYYY-MM-DD>
+   ## [Iteration <NNN>] — <epic-list> — <YYYY-MM-DD>
 
    ### Added / Changed / Fixed
-   - <lines drawn from i4-dev.md, i5-verify.md, i6-int.md>
+   - **EP-<id> <name>:** <line drawn from i4-dev.md, i5-verify.md, i6-int.md for this epic>
+   - **EP-<id> <name>:** <line for the next bundled epic>
 
-   Retro: iterations/<NNN>-<slug>/i7-retro.md
+   Retro: iterations/<NNN>-<first-epic-slug>/i7-retro.md
    ```
+   For a single-epic iteration the bullet list collapses to one bullet without the `EP-x` prefix.
 
-3. Report: `Iteration <NNN> complete. Epic **<name>** is done.` Show remaining backlog.
+3. Report: `Iteration <NNN> complete. <N> epic(s) done: <epic-list>.` Show remaining backlog.
 
 4. **Branch based on user's Retrospective choice + state:**
    - Retro flagged Vision / Architecture / Backlog action items → stop. Say `Retro flagged a foundation change — run /agile-dev:revise <phase> before the next iteration.`
@@ -258,13 +287,36 @@ One phase produced wrong output; the rest is sound.
 
 ### Tier 2 — Split into N-A and N-B (major issue, partial work keepable)
 
-Half the spec is out of scope, or architecture needs to change before the rest can proceed.
+Half the spec is out of scope, architecture needs to change before the rest can proceed, or — for bundles — one epic in the bundle is broken and the rest is sound.
+
+**For a single-epic iteration:**
 
 1. Rename `iterations/<NNN>-<slug>/` → `iterations/<NNN>-A-<slug>/`. Fix internal cross-references.
 2. Set `current_phase: Retrospective`. Run Retrospective for N-A: write `i7-retro.md` covering what shipped, what was deferred, why the split.
 3. Append to Completed iterations: `| <NNN>-A | <epic> | DONE | <date> | <summary + split reason> | iterations/<NNN>-A-<slug>/i7-retro.md |`. CHANGELOG entry for what N-A delivered.
 4. Open N-B: create `iterations/<NNN>-B-<slug>/`, set `current_phase: Refinement`. Keep `current_epic`. Iteration counter unchanged until N-B closes.
 5. N-B runs the full phase loop. Closes as `<NNN>-B` in Completed iterations.
+
+**For a multi-epic bundle:**
+
+1. Identify the broken epic(s) — the ones that can't be completed in this iteration.
+2. Compute the **dependent set**: every other epic in the bundle that lists a broken epic as a dependency, transitively.
+3. Split:
+   - **N-A epics** = bundled epics minus broken minus their dependents. These can still ship.
+   - **N-B epics** = broken epics + their dependents. These move to a fresh iteration with replanned scope.
+4. **Edge case — N-A is empty** (broken epic blocks everything else, or every epic is broken): this isn't a split; it's a Tier 3 abandon. Switch to Tier 3 below.
+5. **Edge case — N-B is just one epic and it's truly abandoned** (not deferred, removed from backlog entirely): close N-A as a normal iteration (no split); record the abandoned epic in the Retrospective with reason. Skip the rest of Tier 2.
+6. Otherwise execute the split:
+   a. Rename `iterations/<NNN>-<slug>/` → `iterations/<NNN>-A-<slug>/`. Fix internal cross-references.
+   b. Update artifacts inside N-A's directory to drop the broken/deferred epics from their per-epic sections (so `i1-spec.md`, `i2-tasks.md`, etc. only describe what N-A ships). Move the dropped sections to `iterations/<NNN>-A-<slug>/deferred-to-N-B.md` for the record.
+   c. Set `current_phase: Retrospective`. Run Retrospective for N-A: `i7-retro.md` covers what shipped, what was deferred, why the split.
+   d. Append to Completed iterations: `| <NNN>-A | <N-A epic-list> | DONE | <date> | Split — moved <N-B epic-list> to N-B because <reason> | iterations/<NNN>-A-<slug>/i7-retro.md |`.
+   e. CHANGELOG entry for what N-A delivered.
+   f. Mark N-A epics `DONE` in Backlog table; deferred N-B epics revert to `TODO` (they'll be picked up by the next Step 2 bundle selection — or by N-B directly, see g).
+   g. Open N-B: create `iterations/<NNN>-B-<first-N-B-epic-slug>/`. Set `current_epic` to the N-B epic-list. Set `current_phase: Refinement` (N-B usually needs replanning). Iteration counter unchanged until N-B closes.
+   h. N-B runs the full phase loop. Closes as `<NNN>-B` in Completed iterations.
+
+It's fine to stop iteration N-A earlier than originally planned if the broken epic forces scope/plan changes. The split exists to preserve work, not to enforce a full iteration on partial scope.
 
 ### Tier 3 — Abandon (cannot keep partial work)
 

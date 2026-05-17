@@ -9,13 +9,26 @@
 - One-paragraph description — what it delivers and why it matters
 - Type: FEATURE / INFRA / QA / SECURITY / DESIGN / DATA / TECH_DEBT / REFACTOR / FIX / MIGRATION
 - Priority: P1 (must have for MVP) / P2 (important) / P3 (nice to have)
-- Rough size: S / M / L / XL (intuitive, not story points)
-- Known dependencies on other epics
+- Rough size: XS / S / M / L / XL / XXL — t-shirt sizing with point values used by the iteration bundler (see table below). Required, not optional.
+- Known dependencies on other epics — list epic names or IDs; empty if none. The iteration bundler honours these: a dependent epic cannot be scheduled until its blockers are DONE.
 - Applicable roles (which disciplines this epic touches)
 - **Key scenarios (2–3):** brief "As a [user], I can [action]" statements that make the epic concrete.
 - **High-level acceptance criteria (3–5 items):** what must be true for this epic to be considered complete.
 - **Out of scope:** 1–2 sentences on what this epic deliberately does NOT include.
 - **Key risks or unknowns:** anything that could make this epic harder or require a decision before starting.
+
+**T-shirt sizes and point values** (used by the iteration bundler):
+
+| Size | Points | Rough effort |
+|---|---|---|
+| XS | 1.0 | Quick fix / one-file tweak |
+| S | 1.7 | Small focused change |
+| M | 3.0 | Standard feature / refactor |
+| L | 5.2 | Substantial work, multiple files |
+| XL | 9.0 | Large feature, default iteration target |
+| XXL | 15.6 | Should usually be split before scheduling |
+
+Points scale as `sqrt(3)^n` so each step is ~1.73× the previous — closer than doubling, allowing finer iteration packing. The iteration bundler ([iterate.md](../commands/iterate.md) Step 2) sums epic points and picks a combination as close as possible to the iteration budget (default = XL = 9 points), respecting priority order and dependencies.
 
 **Guidelines:**
 - Aim for 5–15 epics initially; more will be added in retrospectives

@@ -82,6 +82,12 @@ Write `i5-verify.md`:
 
 ---
 
+## Bundle handling
+
+When the iteration covers multiple epics, `i5-verify.md`'s AC coverage table groups rows per epic. Same DoD applies across all bundled epics — every AC of every epic in the bundle traces to a passing scenario (unless `test_coverage = none`).
+
+---
+
 ## Definition of Done
 
 - Test environment reproducible and recorded in `i5-verify.md`

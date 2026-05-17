@@ -67,11 +67,12 @@ Configure three policy knobs for this project: autonomy, detail, test_coverage. 
    > - `none` — skip Test Plan + Verification entirely. Manual smoke only.
    >
    > **Packaging** — when does the pipeline produce a runnable artifact:
-   > - `each` (recommended default) — every Integration packages to `dist/<NNN>-<slug>/`.
-   > - `milestone` — package only at `/agile-dev:release` boundaries.
-   > - `final` — package only on explicit user request.
+   > - `each` (recommended default), `milestone` (only at `/agile-dev:release`), `final` (only on explicit user request).
    >
-   > Reply with four values (e.g. `semi-automatic full thorough each`) or press Enter for the recommended defaults.
+   > **Iteration size** — work-per-iteration target (t-shirt sizes; XS=1, S=1.7, M=3, L=5.2, XL=9, XXL=15.6):
+   > - `xs`, `s`, `m`, `l`, `xl` (recommended default), `xxl`.
+   >
+   > Reply with five values (e.g. `semi-automatic full thorough each xl`) or press Enter for the recommended defaults.
 
 3. Parse + validate. Repeat with error on invalid values.
 
@@ -88,12 +89,13 @@ Configure three policy knobs for this project: autonomy, detail, test_coverage. 
    detail: <chosen>
    test_coverage: <chosen>
    packaging: <chosen>
+   iteration_size: <chosen>
 
    ## Notes
    <empty>
    ```
 
-6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging>.`
+6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging> / iteration ~<iteration_size>.`
 
 ---
 
@@ -124,12 +126,36 @@ Run `git rev-parse --git-dir 2>/dev/null`. The pipeline assumes git throughout.
   - **1 — init:** run `git init`, stage everything, commit with message `chore: baseline before agile-dev pipeline`. Then continue.
   - **2 — stop:** halt. Say `Stopped. Cd to the right repo (or clone it), then re-run /agile-dev:improve.`
 
-### 2b — Pipeline state
+### 2b — Pipeline state and artifact handling
 
-Check whether `.project-artifacts/state.md` exists:
+Read `.project-artifacts/state.md` (if present) and check for foundation artifacts (`ana-analysis.md`, `f1-vision.md`, `f2-architecture.md`, `f3-backlog.md`). Determine which of the five cases applies and act:
 
-- **Does not exist** → fresh analysis. Begin at **Analysis**.
-- **Exists** → read it and resume from the phase marked as current. Greet the user with a one-line summary of where we are and what comes next.
+**Case 1 — Truly fresh** (no `state.md`, no foundation artifacts): initialise state and begin at Analysis (Step 3 below).
+
+**Case 2 — Orphaned artifacts** (no `state.md` but foundation artifacts exist): ambiguous origin (manual setup, prior failed run, migration from another tool). Stop and ask:
+
+> `Found foundation artifacts (<list which ones>) but no state.md. Choose: 1. Reconstruct state.md from existing artifacts and resume. 2. Archive existing artifacts and start fresh. 3. Cancel.`
+
+- **1 — Reconstruct:** create a `state.md` that marks every present artifact as ✓ in `Completed foundation phases`. Determine `current_phase` as the first foundation phase whose artifact is missing (so Vision if `f1-vision.md` is absent, Architecture if only Vision exists, etc.). Greet the user and resume from there.
+- **2 — Archive:** perform the archive action from Case 5 below, then begin at Analysis.
+- **3 — Cancel:** stop.
+
+**Case 3 — Foundation in progress** (`state.md` present, at least one foundation phase not ✓): resume from the marked `current_phase`. Existing ✓ artifacts are the base — do not regenerate them. The next pending phase runs per its definition (refinement of existing content where appropriate, fresh generation otherwise). Greet with a one-line summary of where we are.
+
+**Case 4 — Foundation complete, iteration in flight** (`state.md` present, all foundation ✓, `current_phase` is an iteration phase): improve is not the right tool. Stop and say:
+
+> `Foundation is complete and iteration <NNN> (<epic>) is in flight at phase <current_phase>. Use /agile-dev:iterate to continue, /agile-dev:revise <phase> to refine a foundation phase, or finish / abandon the current iteration then re-run /agile-dev:improve for a major rework.`
+
+**Case 5 — Foundation complete, project at rest** (`state.md` present, all foundation ✓, `current_phase: Idle`): user is starting a major pivot. The existing project artifacts are project history and must be preserved, not overwritten.
+
+> `Foundation is already complete. /agile-dev:improve will treat this as a major pivot: existing project artifacts (state.md, ana-analysis.md, f1-vision.md, f2-architecture.md, f3-backlog.md, iterations/, releases/, changes/) will be MOVED to .project-artifacts/archive/<YYYY-MM-DD-HHMMSS>/ as project history, then a fresh Foundation will begin. policy.md and pipeline-feedback.md stay in place (policy = pipeline behaviour, feedback = cross-project meta). Continue? (yes / no)`
+
+- **yes:**
+  1. Create `.project-artifacts/archive/<YYYY-MM-DD-HHMMSS>/` (timestamp = current local time, `YYYY-MM-DD-HHMMSS`).
+  2. `mv` each of the listed files / directories into the archive, preserving structure.
+  3. Write `.project-artifacts/archive/<YYYY-MM-DD-HHMMSS>/archive-reason.md` with one line: `Archived on <date> when user re-ran /agile-dev:improve. Reason: major pivot — fresh foundation requested.`
+  4. Proceed to Step 3 (Analysis). New state.md will be created when Analysis writes its first output.
+- **no:** stop and say `Stopped. Use /agile-dev:revise <phase> for targeted foundation changes, or /agile-dev:iterate to start the next iteration.`
 
 ---
 

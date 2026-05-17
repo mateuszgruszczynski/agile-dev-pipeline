@@ -108,4 +108,6 @@ Assign **both** axes per scenario. The level decides which phase owns the test; 
 - `sparse` — Given / When / Then only, no Notes block.
 - `minimal` — scenario ID + one-line scenario name + level/type tag + AC reference. No Given/When/Then. The orchestrator can fill the BDD later if needed.
 
+**Bundle handling**: `i3-test-plan.md` covers all bundled epics. Each scenario's `Covers AC` field references the epic-prefixed AC (e.g. `Covers AC: EP-3.AC-1`). Scenarios can be grouped per epic in the document or interleaved — but tags must be unambiguous so Verification knows which epic each test belongs to.
+
 **⛳ CHECKPOINT Test Plan:** User reviews the plan and confirms it correctly captures expected behaviour. No implementation begins until the plan is approved. (Skipped entirely when `test_coverage = none`.)

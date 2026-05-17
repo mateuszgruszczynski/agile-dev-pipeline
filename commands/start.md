@@ -74,7 +74,11 @@ Configure three policy knobs for this project: autonomy (how often we pause for 
    > - `milestone` — package only when you run `/agile-dev:release` for a versioned release. Useful before MVP / during heavy churn when intermediate packages would just be noise.
    > - `final` — package only on explicit user request (`/agile-dev:release` with a flag, or manual). Quietest option; appropriate for early prototypes.
    >
-   > Reply with four values (e.g. `semi-automatic full thorough each`) or press Enter for the recommended defaults.
+   > **Iteration size** — how much work goes into one iteration? T-shirt sizes have point values (XS=1, S=1.7, M=3, L=5.2, XL=9, XXL=15.6); the bundler picks a set of epics summing close to this target.
+   > - `xs` (1 pt), `s` (1.7), `m` (3), `l` (5.2), `xl` (9, recommended default), `xxl` (15.6).
+   > - Larger = fewer checkpoints, more work per pause. Smaller = tighter feedback loops, more interruptions.
+   >
+   > Reply with five values (e.g. `semi-automatic full thorough each xl`) or press Enter for the recommended defaults.
 
 3. Parse the response. Validate each value against its allowed set. If invalid, repeat the prompt with the error.
 
@@ -93,12 +97,13 @@ Configure three policy knobs for this project: autonomy (how often we pause for 
    detail: <chosen>
    test_coverage: <chosen>
    packaging: <chosen>
+   iteration_size: <chosen>
 
    ## Notes
    <empty — add reasons or context here, or change values directly above>
    ```
 
-6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging>. Stored in .project-artifacts/policy.md (edit by hand to change later).`
+6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging> / iteration ~<iteration_size>. Stored in .project-artifacts/policy.md (edit by hand to change later).`
 
 ---
 
@@ -127,14 +132,38 @@ Run `git rev-parse --git-dir 2>/dev/null` in the working directory. The pipeline
     Stage and commit with message `chore: initialise repository`. Continue.
   - **no:** stop. Say `Git is required. Initialise a repo (or open the project from one), then re-run /agile-dev:start.`
 
-### 1b — Pipeline state
+### 1b — Pipeline state and artifact handling
 
-Check whether `.project-artifacts/state.md` exists:
+Read `.project-artifacts/state.md` (if present) and check for foundation artifacts (`f1-vision.md`, `f2-architecture.md`, `f3-backlog.md`). Determine which of the five cases applies and act:
 
-- **Does not exist** → fresh project. Initialise state (see State file format below) and begin at **Vision**.
-  - If the user provided an initial idea: `$ARGUMENTS` — use it as the seed for Vision. Skip re-asking for things already answered.
-  - If no arguments: ask the user to describe what they want to build in one or two sentences, then begin Vision.
-- **Exists** → read `.project-artifacts/state.md`, identify the current phase, and resume from there. Greet the user with a one-line summary of where we are and what comes next.
+**Case 1 — Truly fresh** (no `state.md`, no foundation artifacts): initialise state (see State file format below) and begin at Vision.
+- If the user provided an initial idea via `$ARGUMENTS`, use it as the seed for Vision.
+- If no arguments, ask the user to describe what they want to build in one or two sentences.
+
+**Case 2 — Orphaned artifacts** (no `state.md` but foundation artifacts exist): ambiguous origin. Stop and ask:
+
+> `Found foundation artifacts (<list which ones>) but no state.md. Choose: 1. Reconstruct state.md from existing artifacts and resume. 2. Archive existing artifacts and start fresh. 3. Cancel.`
+
+- **1 — Reconstruct:** write `state.md` marking every present artifact as ✓ in `Completed foundation phases`. `current_phase` becomes the first foundation phase whose artifact is missing. Greet and resume.
+- **2 — Archive:** perform the archive action from Case 5 below, then begin at Vision.
+- **3 — Cancel:** stop.
+
+**Case 3 — Foundation in progress** (`state.md` present, at least one foundation phase not ✓): resume from `current_phase`. Existing ✓ artifacts are the base — do not regenerate them. Greet with a one-line summary.
+
+**Case 4 — Foundation complete, iteration in flight** (`state.md` present, all foundation ✓, `current_phase` is an iteration phase): start is not the right tool. Stop and say:
+
+> `Foundation is complete and iteration <NNN> (<epic>) is in flight at phase <current_phase>. Use /agile-dev:iterate to continue, /agile-dev:revise <phase> to refine a foundation phase, or finish / abandon the current iteration then re-run /agile-dev:start for a major rework.`
+
+**Case 5 — Foundation complete, project at rest** (`state.md` present, all foundation ✓, `current_phase: Idle`): user is starting a major pivot. Existing project artifacts are project history.
+
+> `Foundation is already complete. /agile-dev:start will treat this as a major pivot: existing project artifacts (state.md, f1-vision.md, f2-architecture.md, f3-backlog.md, iterations/, releases/, changes/) will be MOVED to .project-artifacts/archive/<YYYY-MM-DD-HHMMSS>/ as project history, then a fresh Foundation will begin. policy.md and pipeline-feedback.md stay in place. Continue? (yes / no)`
+
+- **yes:**
+  1. Create `.project-artifacts/archive/<YYYY-MM-DD-HHMMSS>/`.
+  2. `mv` each of the listed files / directories into the archive, preserving structure.
+  3. Write `archive-reason.md` in the archive dir: `Archived on <date> when user re-ran /agile-dev:start. Reason: major pivot — fresh foundation requested.`
+  4. Proceed to Vision (Step 2 below).
+- **no:** stop and say `Stopped. Use /agile-dev:revise <phase> for targeted foundation changes, or /agile-dev:iterate to start the next iteration.`
 
 ---
 
@@ -224,9 +253,10 @@ iteration: <N>
 | P2 | Dashboard | L | TODO |
 
 ## Completed iterations
-| # | Epic | Status | Closed | Notes | Retro |
+| # | Epics | Status | Closed | Notes | Retro |
 |---|---|---|---|---|---|
-| 001 | User Authentication | DONE | YYYY-MM-DD | <one-line retro highlight, or "No plan changes", or abandonment reason> | iterations/001-user-authentication/i7-retro.md |
+| 001 | EP-1 User Authentication (XL) | DONE | YYYY-MM-DD | <one-line retro highlight, or "No plan changes", or abandonment reason> | iterations/001-user-authentication/i7-retro.md |
+| 002 | EP-3 Search index (L) + EP-7 Filter UI (M) + EP-9 Pagination (M) | DONE | YYYY-MM-DD | Bundle, 11.2 pts | iterations/002-search-index/i7-retro.md |
 
 ## Releases
 | Version | Date | Iterations | Notes |
@@ -240,7 +270,7 @@ iteration: <N>
 Notes:
 - `mode` is `greenfield` for projects started with `/agile-dev:start`, `improve` for `/agile-dev:improve`.
 - `version` is `unreleased` until the first `/agile-dev:release`; thereafter it tracks the latest released version.
-- The `Completed iterations` table is empty until the first iteration closes; `/agile-dev:iterate` appends rows at iteration close. Split iterations (mid-iteration recovery Tier 2) appear as `<NNN>-A` and `<NNN>-B` rows. The `Status` column is `DONE` for completed iterations and `ABANDONED` for Tier 3 closures. The `Notes` column carries a one-line retro highlight (or the abandonment reason).
+- The `Completed iterations` table is empty until the first iteration closes; `/agile-dev:iterate` appends rows at iteration close. Split iterations (mid-iteration recovery Tier 2) appear as `<NNN>-A` and `<NNN>-B` rows. The `Status` column is `DONE` for completed iterations and `ABANDONED` for Tier 3 closures. The `Notes` column carries a one-line retro highlight (or the abandonment reason). The `Epics` column lists every epic bundled into the iteration with its t-shirt size in parens; a bundle joins them with ` + `.
 - The `Releases` and `Foundation revisions` tables stay empty until their respective commands run; keep the headings as placeholders so the format stays consistent.
 - Update `status` to `COMPLETE` when all epics are `DONE`.
 

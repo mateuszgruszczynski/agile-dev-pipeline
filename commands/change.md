@@ -82,7 +82,10 @@ Configure three policy knobs for this project: autonomy, detail, test_coverage. 
    > **Packaging** — when does the pipeline produce a runnable artifact:
    > - `each` (recommended default), `milestone` (only at /agile-dev:release), `final` (only on explicit user request).
    >
-   > Reply with four values (e.g. `semi-automatic full thorough each`) or press Enter for the recommended defaults.
+   > **Iteration size** — work-per-iteration target (only relevant if this change later expands into iterated work; defaults safely if you don't care):
+   > - `xs`, `s`, `m`, `l`, `xl` (recommended default), `xxl`.
+   >
+   > Reply with five values (e.g. `semi-automatic full thorough each xl`) or press Enter for the recommended defaults.
 
 3. Parse + validate.
 
@@ -99,12 +102,13 @@ Configure three policy knobs for this project: autonomy, detail, test_coverage. 
    detail: <chosen>
    test_coverage: <chosen>
    packaging: <chosen>
+   iteration_size: <chosen>
 
    ## Notes
    <empty>
    ```
 
-6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging>.`
+6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging> / iteration ~<iteration_size>.`
 
 ---
 

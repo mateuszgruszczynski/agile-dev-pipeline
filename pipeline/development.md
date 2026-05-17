@@ -93,6 +93,12 @@ Apply alongside DEV work when Decomposition assigned them.
 
 Persisted as `i4-dev.md` for Verification to consume.
 
+## Bundle handling
+
+When the iteration has multiple epics, `i4-dev.md` groups Files-changed, In-process tests, and Key decisions sections per epic (with `EP-x` headings). Commit messages reference the epic with a conventional-commit footer or prefix: `feat(EP-3): add search index schema`. This keeps history navigable per epic even when many were implemented in one iteration.
+
+No per-epic checkpoint within Development — the bundle flows as one continuous implementation pass. The whole iteration's worth of in-process tests must be green before the phase completes.
+
 ## Policy effects
 
 `test_coverage` axis:

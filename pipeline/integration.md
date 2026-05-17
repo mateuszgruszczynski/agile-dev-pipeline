@@ -114,3 +114,7 @@ DoD: Integration cannot be APPROVED until every condition in [definitions.md](de
 - `minimal` — build status + smoke outcome + AC pass/fail table only. No verification roll-up paragraph, no demo section.
 
 `autonomy` axis: see [iterate.md](../commands/iterate.md) Step 3 — autonomy applies globally to checkpoint behaviour.
+
+## Bundle handling
+
+`i6-int.md`'s AC pass/fail table groups rows per bundled epic. The manual smoke covers the union of user journeys touched by the bundle. One Integration phase per iteration regardless of bundle size — no per-epic checkpoints. Auto-continue-on-green still applies; "green" means every AC of every bundled epic traces to a passing scenario (or to a passing manual-smoke note when `test_coverage = none`).

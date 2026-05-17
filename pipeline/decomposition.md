@@ -64,4 +64,6 @@ Documentation tasks appear in the task list like any other task, with a role own
 - `sparse` — task title + role + one-line description. Drop dependencies unless critical, drop testability note.
 - `minimal` — task title + role only (one line per task). No description, no deps.
 
+**Bundle handling**: when the iteration has multiple epics, `i2-tasks.md` has one section per epic. Tasks within each section are tagged with the parent epic (e.g. `EP-3 DEV-1 — Index schema`). The Decomposition straightforward / judgment-needed checkpoint rule applies to the bundle as a whole, not per epic.
+
 **⛳ CHECKPOINT Decomposition:** User reviews task breakdown and confirms nothing is missing or misassigned.

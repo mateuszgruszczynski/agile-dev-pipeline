@@ -28,6 +28,8 @@ Do not include: what went well, what was hard, effort commentary, feelings — u
 
 `autonomy = ai-driven` — the iteration-boundary checkpoint does **not** pause. The retrospective produces `i7-retro.md` and the orchestrator auto-loops to the next iteration immediately. To stop the loop, the user closes the session.
 
+**Bundle handling**: when the iteration covered multiple epics, `i7-retro.md` is one retro for the whole bundle. Per-epic findings are called out only when they're epic-specific (e.g. "EP-7 surfaced a UX inconsistency"); cross-cutting findings (process, plan, backlog) are written without epic attribution. Action items list which epic(s) they relate to when applicable.
+
 **Early-trigger paths:** Retrospective can be entered before Integration via mid-iteration recovery. See *Mid-iteration recovery* in [iterate.md](../commands/iterate.md). Tier 2 splits the iteration (N-A closes here, N-B replans). Tier 3 abandons. Keep retros tight in both cases.
 
 ---

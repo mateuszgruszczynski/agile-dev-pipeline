@@ -66,6 +66,7 @@ Before any phase runs, you choose three things that control how the pipeline beh
 | **detail** | `full` (default) / `sparse` / `minimal` | How verbose the produced artifacts are. `full` = current behaviour with rationale and edge cases. `sparse` = facts only, no narrative. `minimal` = one-line outputs, just enough to drive the next phase. |
 | **test_coverage** | `thorough` (default) / `minimal` / `none` | How much testing the pipeline produces. `thorough` = full pyramid. `minimal` = one happy-path scenario per AC. `none` = skips Test Plan + Verification entirely; manual smoke is the only gate. For prototypes. |
 | **packaging** | `each` (default) / `milestone` / `final` | When a runnable artifact (binary / jar / docker image / etc.) gets produced. `each` = every iteration writes one to `dist/<NNN>-<slug>/`. `milestone` = only at `/agile-dev:release` boundaries. `final` = only on explicit user request. Architecture decides *what* the artifact is and which platforms it targets; Environment generates the build recipe; Integration runs it and smoke-tests the result. |
+| **iteration_size** | `xs` / `s` / `m` / `l` / `xl` (default) / `xxl` | How much work goes into one iteration. T-shirt sizes have point values (XS=1, S=1.7, M=3, L=5.2, XL=9, XXL=15.6, scaling as √3). The iteration bundler picks a set of TODO epics from the backlog summing closest to this budget, respecting priority order and dependencies. Default `xl` = 9 points ≈ one XL epic, two L epics, three M epics, or any equivalent combination. Larger = fewer checkpoints per real-world unit of work. |
 
 The defaults match the pipeline's original behaviour, so existing projects don't change. You're asked once during `/agile-dev:start` / `/agile-dev:improve` / `/agile-dev:change`. Combining `ai-driven` with `none` triggers an extra confirmation since it removes both human and automated gates — only appropriate for throwaway code.
 
@@ -325,6 +326,26 @@ The pipeline also generates `.devcontainer/Dockerfile`, `.devcontainer/devcontai
 
 **What is `policy.md` and how do I change it?**
 A markdown file at `.project-artifacts/policy.md` holding three project-wide settings: `autonomy`, `detail`, and `test_coverage`. Set once during the first foundation command (Step 0.5). To change later, open the file and edit the values directly — the orchestrator reads it at the start of every `/agile-dev:iterate` and `/agile-dev:change` session. There's no slash command for editing; hand-edit is intentional, since policy changes are rare and a deliberate decision.
+
+**What happens if I run `/agile-dev:start` or `/agile-dev:improve` on a project that already has artifacts?**
+
+Five cases, handled explicitly in Step 1b (start) / Step 2b (improve):
+
+- **Truly fresh** (no `state.md`, no foundation artifacts) — runs from the first foundation phase.
+- **Orphaned artifacts** (no `state.md` but foundation artifacts exist — manual setup, prior failed run, or migration) — the pipeline stops and asks: reconstruct `state.md` from what exists and resume; archive everything and start fresh; or cancel.
+- **Foundation in progress** (some foundation phases ✓, others not) — resumes from the marked `current_phase`. Existing ✓ artifacts are the base; the pending phase is what runs. No silent overwrites.
+- **Foundation complete, iteration in flight** — refuses. Points you at `/agile-dev:iterate` (continue), `/agile-dev:revise <phase>` (targeted foundation change), or abandon-and-restart.
+- **Foundation complete, project at rest** (`current_phase: Idle`) — treats it as a major pivot. After explicit confirmation, MOVES (not copies) all existing project artifacts (`state.md`, `f1/f2/f3`, `iterations/`, `releases/`, `changes/`) into `.project-artifacts/archive/<YYYY-MM-DD-HHMMSS>/` as project history, writes an `archive-reason.md` note, then begins a fresh Foundation. `policy.md` and `pipeline-feedback.md` stay in place. Old work is never lost — it lives in `archive/` and you can browse or restore it.
+
+So: existing artifacts are never silently overwritten. Either they're preserved in place (resume), reconstructed into state (orphans → reconstruct), or moved to `archive/` as history (major pivot or orphans → archive).
+
+**How many epics per iteration? Why does the pipeline sometimes bundle several?**
+
+The `iteration_size` policy sets a points budget for each iteration (default = XL = 9 points, scaling as √3 across t-shirt sizes). The bundler picks unblocked TODO epics from the backlog in priority order, accumulating until the sum is as close to the budget as possible. So a single XL epic is one iteration; two L epics together (10.4 pts) is also one iteration; three M epics (9 pts) is one iteration. Aim: less time spent on approvals, more work per pause. Dependencies are respected — a dependent epic won't bundle until its blocker is DONE. Smaller iterations (`m`, `l`) give tighter feedback loops; larger (`xxl`) give longer focused stretches. Edit `policy.md` to change anytime.
+
+**What is a "slug"?**
+
+A short, filename-friendly identifier derived from a longer name: lowercase, hyphens for spaces, no special characters. The pipeline uses slugs in directory paths: `iterations/001-user-authentication/`, `changes/add-csv-export/`. For a multi-epic iteration the slug is the first (highest-priority) epic's slug — so a bundle led by "Search Index" lives at `iterations/002-search-index/`.
 
 **What if I want different policies for different iterations?**
 Not supported in v1. Policy is project-wide. The workaround is to change `policy.md` between iterations and accept that you'll need to remember to switch it back. If per-iteration override becomes common, it's a future enhancement.
