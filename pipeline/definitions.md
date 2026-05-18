@@ -63,12 +63,12 @@ If DoT fails, the cheapest fix is almost always rewriting the AC, not adding mor
 - Regression coverage exists for behaviour this epic touched (within the epic's scope)
 - Documentation tasks listed in Decomposition are complete (README, API docs, runbook, ADRs as applicable)
 - CHANGELOG.md has an entry for this iteration
-- `i4-dev.md`, `i5-verify.md`, and `i6-int.md` are written and accurate
+- `i2-plan.md` and `i3-outcome.md` are written and accurate
 
 **Where this is enforced:**
 - [verification.md](verification.md) — Verification cannot complete until every non-quarantined out-of-process scenario passes and AC coverage is confirmed.
 - [integration.md](integration.md) — Integration cannot be APPROVED until every DoD condition holds.
-- [iterate.md](../commands/iterate.md), Step 4 — closing the iteration is gated on a passing Integration checkpoint, which is gated on DoD.
+- [iterate.md](../commands/iterate.md), iteration close — closing the iteration is gated on a passing Integration checkpoint, which is gated on DoD.
 
 **Policy effects on DoD** (driven by `.project-artifacts/policy.md`):
 
@@ -76,10 +76,10 @@ If DoT fails, the cheapest fix is almost always rewriting the AC, not adding mor
 |---|---|
 | `test_coverage = thorough` (default) | All conditions above apply unchanged. |
 | `test_coverage = minimal` | Out-of-process scenarios are limited to happy paths; "no regressions" still applies but is measured against the reduced scenario set. AC trace still required (one happy-path scenario per AC is enough). |
-| `test_coverage = none` | Drop "Full in-process suite passes", "Full out-of-process suite passes", and "Every AC traces to ≥1 passing scenario" from the DoD. Replace with: "Production build succeeds. Application starts and connects. Manual smoke test passes. Each AC marked pass/fail in the manual-smoke walkthrough with a one-line note in `i6-int.md`." `i5-verify.md` is not produced and is not part of DoD. |
+| `test_coverage = none` | Drop "Full in-process suite passes", "Full out-of-process suite passes", and "Every AC traces to ≥1 passing scenario" from the DoD. Replace with: "Production build succeeds. Application starts and connects. Manual smoke test passes. Each AC marked pass/fail in the manual-smoke walkthrough with a one-line note in the Integration section of `i3-outcome.md`." The Verification section of `i3-outcome.md` is not produced and is not part of DoD. |
 | `detail` and `autonomy` axes | Do not change DoD conditions; they only change verbosity / approval behaviour, not what counts as "done". |
 | `packaging = each` | Adds to DoD: **a runnable deliverable artifact exists in `dist/<NNN>-<slug>/`** matching the type declared in `f2-architecture.md`, smoke-tested per `test_coverage`. Run instructions and external runtime requirements are recorded in `i6-int.md`. |
 | `packaging = milestone` or `final` | DoD unchanged at iteration close (no `dist/` produced). At `/agile-dev:release` boundary, the release-time DoD adds: `releases/v<version>/` contains the deliverable artifact, `RUN.md`, runtime requirements, and `MANIFEST.txt` with sha256 hashes. |
-| `iteration_size` (any value) | DoD conditions apply to **every epic in the bundle** when the iteration covers multiple. Every bundled epic's ACs must trace to passing scenarios (or in-process coverage with note, or manual smoke when `test_coverage = none`); `i4-dev.md`, `i5-verify.md`, `i6-int.md` cover every bundled epic; CHANGELOG entry lists every bundled epic. |
+| `iteration_size` (any value) | DoD conditions apply to **every epic in the bundle** when the iteration covers multiple. Every bundled epic's ACs must trace to passing scenarios (or in-process coverage with note, or manual smoke when `test_coverage = none`); `i3-outcome.md` covers every bundled epic; CHANGELOG entry lists every bundled epic. |
 
 If DoD fails, fix it before approving Integration. Do not defer DoD failures to the next iteration without an explicit decision in Retrospective and a follow-up FIX epic in the backlog.

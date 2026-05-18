@@ -4,15 +4,15 @@
 
 **Owns:** System-integration, E2E, and out-of-process Contract scenarios from the Test Plan. Levels and types are defined in [test-plan.md](test-plan.md) — do not duplicate that material here.
 
-> **Skipped entirely when `test_coverage = none`** in `.project-artifacts/policy.md`. The orchestrator goes Development → Integration, does not write `i5-verify.md`, and Integration's AC table changes to a manual-smoke check (see [integration.md](integration.md)).
+> **Skipped entirely when `test_coverage = none`** in `.project-artifacts/policy.md`. The orchestrator goes Development → Integration, the Verification section of `i3-outcome.md` is not written, and Integration's AC table changes to a manual-smoke check (see [integration.md](integration.md)).
 
 ---
 
 ## Inputs
 
 - `i1-spec.md` — spec and ACs
-- `i3-test-plan.md` — scenarios tagged by level and type; this phase owns the out-of-process ones
-- `i4-dev.md` — Development summary
+- `i2-plan.md` (Test Scenarios section) — scenarios tagged by level and type; this phase owns the out-of-process ones
+- `i3-outcome.md` (Development section) — Development summary
 - `f2-architecture.md` — Integration Strategy table + Project Type Adaptations (load these sections only)
 
 ---
@@ -70,21 +70,25 @@ Skip for <3 scenarios or one-line additions to existing files.
 
 ## Output
 
-Write `i5-verify.md`:
+Append a **Verification** section to `i3-outcome.md`:
 
-- **Test environment** — setup + reproduction steps
-- **External-service stubs** — which third parties, which mock server / contract
-- **System-integration tests** — count by type + AC each covers
-- **E2E tests** — count by type + AC each covers
-- **Run results** — totals, pass/fail, failures with fix
-- **Quarantined tests** — reason + follow-up task
-- **AC coverage table** — one row per AC: Verification scenarios that prove it, or "in-process only" with justification
+```markdown
+## Verification
+
+- Test environment — setup + reproduction steps
+- External-service stubs — which third parties, which mock server / contract
+- System-integration tests — count by type + AC each covers
+- E2E tests — count by type + AC each covers
+- Run results — totals, pass/fail, failures with fix
+- Quarantined tests — reason + follow-up task
+- AC coverage table — one row per AC: Verification scenarios that prove it, or "in-process only" with justification
+```
 
 ---
 
 ## Bundle handling
 
-When the iteration covers multiple epics, `i5-verify.md`'s AC coverage table groups rows per epic. Same DoD applies across all bundled epics — every AC of every epic in the bundle traces to a passing scenario (unless `test_coverage = none`).
+When the iteration covers multiple epics, the Verification section's AC coverage table groups rows per epic. Same DoD applies across all bundled epics — every AC of every epic in the bundle traces to a passing scenario (unless `test_coverage = none`).
 
 ---
 
@@ -95,7 +99,7 @@ When the iteration covers multiple epics, `i5-verify.md`'s AC coverage table gro
 - All non-quarantined tests pass
 - Every quarantined test has reason + follow-up FIX task
 - Each AC covered by ≥1 Verification scenario, or in-process coverage with explicit note
-- `i5-verify.md` written and accurate
+- Verification section of `i3-outcome.md` written and accurate
 
 Fix any failure before Integration. No deferral.
 

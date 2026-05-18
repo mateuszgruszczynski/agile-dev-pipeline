@@ -15,36 +15,7 @@ Each phase definition lives in its own file under `${CLAUDE_PLUGIN_ROOT}/pipelin
 
 ---
 
-## Step 0 — Plugin self-permissions (one-time per user)
-
-Before reading any pipeline files, ensure the user has authorised reads of this plugin's directory in their user settings. Two rules are added together: a narrow scoped rule and a broader plugins-tree rule. Both are needed because Claude Code's permission matcher inconsistently honours broad `**` rules for the plugin install dir — the explicit narrow rule is a safety net. Idempotent — silently no-ops once both rules are present.
-
-1. Check whether both rules already exist:
-   ```
-   grep -qF 'plugins/cache/agile-dev/**' ~/.claude/settings.json 2>/dev/null && \
-     grep -qF 'plugins/**' ~/.claude/settings.json 2>/dev/null
-   ```
-   Exit 0 → both rules present, skip the rest of Step 0.
-
-2. Otherwise resolve `$HOME` (`bash -c 'echo $HOME'`) and ask the user:
-
-   > `Without permission rules, every read of this plugin's pipeline files will prompt for approval. Add the following two rules to ~/.claude/settings.json?`
-   > - `Read(<HOME>/.claude/plugins/cache/agile-dev/**)` — narrow, scoped to this plugin
-   > - `Read(<HOME>/.claude/plugins/**)` — broad, defense-in-depth for harness misses
-   >
-   > `One-time setup. (yes / no)`
-
-3. **yes** → Edit `~/.claude/settings.json` to ensure both rules are in `permissions.allow`:
-   - File missing → create it with `{"permissions": {"allow": ["Read(<HOME>/.claude/plugins/cache/agile-dev/**)", "Read(<HOME>/.claude/plugins/**)"]}}`.
-   - `permissions` or `permissions.allow` missing → add the keys.
-   - `permissions.allow` exists → append each missing rule (skip rules already present, idempotent).
-   Confirm: `Permission rules added to ~/.claude/settings.json.`
-4. **no** → Continue. Say: `Proceeding without the rules. You will be prompted per pipeline file.`
-5. **Malformed JSON** in `~/.claude/settings.json` → do not edit. Say: `~/.claude/settings.json is malformed; please fix manually. Skipping plugin permission setup.`
-
----
-
-## Step 0.5 — Pipeline policy (one-time per project)
+## Step 0 — Pipeline policy (one-time per project)
 
 Configure three policy knobs for this project: autonomy (how often we pause for approval), detail (how verbose artifacts are), and test_coverage (how much testing to produce). Stored at `.project-artifacts/policy.md`. Idempotent — silently no-ops once the file exists.
 
@@ -202,12 +173,8 @@ All outputs are persisted as markdown files so the pipeline survives session res
   iterations/
     001-<epic-slug>/                  ← split iterations use 001-A-<slug> / 001-B-<slug>
       i1-spec.md                      ← Refinement
-      i2-tasks.md                     ← Decomposition
-      i3-test-plan.md                 ← Test Plan
-      i4-dev.md                       ← Development summary
-      i5-verify.md                    ← Verification result (out-of-process tests)
-      i6-int.md                       ← Integration result
-      i7-retro.md                     ← Retrospective
+      i2-plan.md                      ← Decomposition + Test Plan (tasks + BDD scenarios)
+      i3-outcome.md                   ← Development + Verification + Integration results
   releases/
     v1.0.0.md                         ← release notes (created by /agile-dev:release)
 CHANGELOG.md                          ← root of project; appended at iteration close, version-grouped at release
@@ -235,7 +202,7 @@ iteration: <N>
 ## Phase enums
 
 - Foundation phases: Vision | Architecture | Backlog | Environment
-- Iteration phases: Idle | Refinement | Decomposition | Test Plan | Development | Verification | Integration | Retrospective
+- Iteration phases: Idle | Refinement | Decomposition | Development | Verification | Integration
 
 `Idle` means no iteration is in progress; `/agile-dev:iterate` sets this between iterations.
 
@@ -253,10 +220,10 @@ iteration: <N>
 | P2 | Dashboard | L | TODO |
 
 ## Completed iterations
-| # | Epics | Status | Closed | Notes | Retro |
+| # | Epics | Status | Closed | Notes | Outcome |
 |---|---|---|---|---|---|
-| 001 | EP-1 User Authentication (XL) | DONE | YYYY-MM-DD | <one-line retro highlight, or "No plan changes", or abandonment reason> | iterations/001-user-authentication/i7-retro.md |
-| 002 | EP-3 Search index (L) + EP-7 Filter UI (M) + EP-9 Pagination (M) | DONE | YYYY-MM-DD | Bundle, 11.2 pts | iterations/002-search-index/i7-retro.md |
+| 001 | EP-1 User Authentication (XL) | DONE | YYYY-MM-DD | <one-line summary or abandonment reason> | iterations/001-user-authentication/i3-outcome.md |
+| 002 | EP-3 Search index (L) + EP-7 Filter UI (M) + EP-9 Pagination (M) | DONE | YYYY-MM-DD | Bundle, 11.2 pts | iterations/002-search-index/i3-outcome.md |
 
 ## Releases
 | Version | Date | Iterations | Notes |
@@ -270,7 +237,7 @@ iteration: <N>
 Notes:
 - `mode` is `greenfield` for projects started with `/agile-dev:start`, `improve` for `/agile-dev:improve`.
 - `version` is `unreleased` until the first `/agile-dev:release`; thereafter it tracks the latest released version.
-- The `Completed iterations` table is empty until the first iteration closes; `/agile-dev:iterate` appends rows at iteration close. Split iterations (mid-iteration recovery Tier 2) appear as `<NNN>-A` and `<NNN>-B` rows. The `Status` column is `DONE` for completed iterations and `ABANDONED` for Tier 3 closures. The `Notes` column carries a one-line retro highlight (or the abandonment reason). The `Epics` column lists every epic bundled into the iteration with its t-shirt size in parens; a bundle joins them with ` + `.
+- The `Completed iterations` table is empty until the first iteration closes; `/agile-dev:iterate` appends rows at iteration close. Split iterations (mid-iteration recovery Tier 2) appear as `<NNN>-A` and `<NNN>-B` rows. The `Status` column is `DONE` for completed iterations and `ABANDONED` for Tier 3 closures. The `Notes` column carries a one-line summary (or the abandonment reason). The `Outcome` column links to `i3-outcome.md` for completed iterations. The `Epics` column lists every epic bundled into the iteration with its t-shirt size in parens; a bundle joins them with ` + `.
 - The `Releases` and `Foundation revisions` tables stay empty until their respective commands run; keep the headings as placeholders so the format stays consistent.
 - Update `status` to `COMPLETE` when all epics are `DONE`.
 
@@ -282,12 +249,11 @@ After Vision + Architecture + Backlog are all approved, run the Environment phas
 
 1. Load `${CLAUDE_PLUGIN_ROOT}/pipeline/environment.md` and follow it.
    - Read `.project-artifacts/f2-architecture.md` to determine the stack.
-   - Generate `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, and `.claude/settings.json`.
-   - Present the three files to the user and instruct them to reopen the project in the container.
-   - ⛳ CHECKPOINT Environment: user confirms they are inside the container. Mark `Environment ✓` in `state.md`.
-2. **Stop here.** Say: "Foundation complete. Reopen the project in the dev container, then run `/agile-dev:iterate` to begin the first iteration (Refinement)."
+   - Generate the production build recipe and optionally a dev container if the stack requires it.
+   - ⛳ CHECKPOINT Environment: user reviews and approves the environment setup. Mark `Environment ✓` in `state.md`.
+2. **Stop here.** Say: "Foundation complete. Run `/agile-dev:iterate` to begin the first iteration."
 
-Do **not** run iteration phases (Refinement, Decomposition, Test Plan, Development, Verification, Integration, Retrospective) in this session. Each of those runs in its own session via `/agile-dev:iterate` to keep sessions small and token-efficient.
+Do **not** run iteration phases (Refinement, Decomposition, Development, Verification, Integration) in this session. Each of those runs in its own session via `/agile-dev:iterate` to keep sessions small and token-efficient.
 
 ---
 

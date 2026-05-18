@@ -1,7 +1,53 @@
 {
   "permissions": {
     "allow": [
-      "Read(${CLAUDE_PLUGIN_ROOT}/**)"
+      "Bash",
+      "Read",
+      "Write(./**)",
+      "Edit(./**)",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "Agent",
+      "NotebookEdit",
+      "mcp__*"
+    ],
+    "deny": [
+      "Bash(sudo *)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(npm install -g *)",
+      "Bash(pip install --user *)",
+      "Bash(brew install *)",
+      "Bash(systemctl *)",
+      "Bash(launchctl *)",
+      "Bash(crontab *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [{
+          "type": "command",
+          "command": "PLUGIN=$(ls -dt ~/.claude/plugins/cache/agile-dev/agile-dev/*/2>/dev/null | head -1); [ -f \"$PLUGIN/hooks/pre-tool-guard.sh\" ] && bash \"$PLUGIN/hooks/pre-tool-guard.sh\" || exit 0"
+        }]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [{
+          "type": "command",
+          "command": "PLUGIN=$(ls -dt ~/.claude/plugins/cache/agile-dev/agile-dev/*/2>/dev/null | head -1); [ -f \"$PLUGIN/hooks/pre-tool-guard.sh\" ] && bash \"$PLUGIN/hooks/pre-tool-guard.sh\" || exit 0"
+        }]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{
+          "type": "command",
+          "command": "PLUGIN=$(ls -dt ~/.claude/plugins/cache/agile-dev/agile-dev/*/2>/dev/null | head -1); [ -f \"$PLUGIN/hooks/pre-commit.sh\" ] && bash \"$PLUGIN/hooks/pre-commit.sh\" || exit 0"
+        }]
+      }
     ]
   }
 }

@@ -57,13 +57,21 @@ Documentation tasks appear in the task list like any other task, with a role own
 - **Expect:** ordered draft list with proposed role + description + done condition per task. Orchestrator reviews roles, adjusts dependencies, writes `i2-tasks.md`.
 
 **Output:**
-- Ordered task list with role assignments and dependencies
+- Write the **Tasks** section of `i2-plan.md` (create the file with a `# Iteration NNN Plan` heading):
+
+  ```markdown
+  # Iteration NNN Plan
+
+  ## Tasks
+
+  [ordered task list]
+  ```
+
+After writing Tasks, **immediately run the Test Plan phase** (load `${CLAUDE_PLUGIN_ROOT}/pipeline/test-plan.md`) without pausing for user input. Test Plan appends the **Test Scenarios** section to the same `i2-plan.md`. The combined checkpoint at the end of Test Plan presents the full `i2-plan.md`.
 
 **Policy effects** (`detail` axis):
 - `full` — task title + role + description + dependencies + testability/done condition.
 - `sparse` — task title + role + one-line description. Drop dependencies unless critical, drop testability note.
 - `minimal` — task title + role only (one line per task). No description, no deps.
 
-**Bundle handling**: when the iteration has multiple epics, `i2-tasks.md` has one section per epic. Tasks within each section are tagged with the parent epic (e.g. `EP-3 DEV-1 — Index schema`). The Decomposition straightforward / judgment-needed checkpoint rule applies to the bundle as a whole, not per epic.
-
-**⛳ CHECKPOINT Decomposition:** User reviews task breakdown and confirms nothing is missing or misassigned.
+**Bundle handling**: when the iteration has multiple epics, `i2-plan.md` Tasks section has one sub-section per epic. Tasks within each sub-section are tagged with the parent epic (e.g. `EP-3 DEV-1 — Index schema`). The straightforward / judgment-needed checkpoint rule applies to the bundle as a whole, not per epic.

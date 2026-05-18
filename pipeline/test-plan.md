@@ -94,7 +94,13 @@ Assign **both** axes per scenario. The level decides which phase owns the test; 
 - **Expect:** draft scenarios in BDD format, no level/type tags. Orchestrator assigns level (decision rule) and type (matching architecture interfaces), writes `i3-test-plan.md`.
 
 **Output:**
-- Acceptance test scenarios list (document or table)
+- Append a **Test Scenarios** section to `i2-plan.md`:
+
+  ```markdown
+  ## Test Scenarios
+
+  [BDD scenarios, one per AC minimum, with level/type/owner tags]
+  ```
 
 **Policy effects:**
 
@@ -108,6 +114,6 @@ Assign **both** axes per scenario. The level decides which phase owns the test; 
 - `sparse` — Given / When / Then only, no Notes block.
 - `minimal` — scenario ID + one-line scenario name + level/type tag + AC reference. No Given/When/Then. The orchestrator can fill the BDD later if needed.
 
-**Bundle handling**: `i3-test-plan.md` covers all bundled epics. Each scenario's `Covers AC` field references the epic-prefixed AC (e.g. `Covers AC: EP-3.AC-1`). Scenarios can be grouped per epic in the document or interleaved — but tags must be unambiguous so Verification knows which epic each test belongs to.
+**Bundle handling**: the Test Scenarios section of `i2-plan.md` covers all bundled epics. Each scenario's `Covers AC` field references the epic-prefixed AC (e.g. `Covers AC: EP-3.AC-1`). Scenarios can be grouped per epic or interleaved — but tags must be unambiguous so Verification knows which epic each test belongs to.
 
-**⛳ CHECKPOINT Test Plan:** User reviews the plan and confirms it correctly captures expected behaviour. No implementation begins until the plan is approved. (Skipped entirely when `test_coverage = none`.)
+**⛳ CHECKPOINT Plan:** Present the complete `i2-plan.md` (tasks + scenarios). User confirms both the task breakdown and the scenario coverage are correct. No implementation begins until approved. (Skipped entirely when `test_coverage = none` — in that case Decomposition's conditional checkpoint still applies.)

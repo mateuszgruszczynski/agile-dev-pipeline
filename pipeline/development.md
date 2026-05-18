@@ -83,19 +83,26 @@ Apply alongside DEV work when Decomposition assigned them.
 
 ## Output
 
-`i4-dev.md`:
+Write the **Development** section of `i3-outcome.md` (create the file with a `# Iteration NNN Outcome` heading):
+
+```markdown
+# Iteration NNN Outcome
+
+## Development
+
 - Files changed (added / modified / removed)
 - In-process tests written, by level (Unit / Component / Contract-in-process), with the AC each covers
 - External interfaces wired up and ready for Verification (HTTP routes, message handlers, CLI commands)
 - Key implementation decisions (and why)
 - Deviations from spec / task list (with reason)
 - Self-review checklist result
+```
 
-Persisted as `i4-dev.md` for Verification to consume.
+Persisted in `i3-outcome.md` for Verification to append to.
 
 ## Bundle handling
 
-When the iteration has multiple epics, `i4-dev.md` groups Files-changed, In-process tests, and Key decisions sections per epic (with `EP-x` headings). Commit messages reference the epic with a conventional-commit footer or prefix: `feat(EP-3): add search index schema`. This keeps history navigable per epic even when many were implemented in one iteration.
+When the iteration has multiple epics, the Development section of `i3-outcome.md` groups Files-changed, In-process tests, and Key decisions per epic (with `EP-x` headings). Commit messages reference the epic with a conventional-commit footer or prefix: `feat(EP-3): add search index schema`. This keeps history navigable per epic even when many were implemented in one iteration.
 
 No per-epic checkpoint within Development — the bundle flows as one continuous implementation pass. The whole iteration's worth of in-process tests must be green before the phase completes.
 

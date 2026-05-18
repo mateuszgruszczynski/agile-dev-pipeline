@@ -1,0 +1,21 @@
+{
+  "block": [
+    "\\.env$",
+    "\\.env\\.",
+    "\\.pem$",
+    "\\.key$",
+    "\\.p12$",
+    "\\.pfx$",
+    "credential",
+    "\\.token$",
+    "secret\\.json$",
+    "\\.secret$"
+  ],
+  "warn": [
+    "\\.claude/settings\\.json$",
+    "\\.gitconfig$",
+    "\\.bashrc$",
+    "\\.zshrc$",
+    "\\.ssh/"
+  ]
+}

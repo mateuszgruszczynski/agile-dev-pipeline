@@ -1,33 +1,8 @@
 ---
-description: Run iteration phases continuously through Refinement / Decomposition / Test Plan / Development / Verification / Integration / Retrospective. Stops only at ⛳ approval checkpoints.
+description: Run iteration phases continuously through Refinement / Decomposition+Plan / Development / Verification / Integration. Stops only at ⛳ approval checkpoints. Also used by /agile-dev:change when the project has an existing pipeline.
 ---
 
-Iteration phase runner. Runs the iteration loop forward through every phase until it hits a ⛳ CHECKPOINT, the iteration boundary, or backlog exhaustion. State is saved to `state.md` after each approval; closing the session at any point is a safe pause.
-
----
-
-## Step 0 — Plugin self-permissions (one-time per user)
-
-Before reading any pipeline files, ensure the user has authorised reads of this plugin's directory in their user settings. Two rules together: narrow + broad. Both are needed because Claude Code's permission matcher inconsistently honours broad `**` rules for the plugin dir. Idempotent — silently no-ops once both rules are present.
-
-1. Check whether both rules exist:
-   ```
-   grep -qF 'plugins/cache/agile-dev/**' ~/.claude/settings.json 2>/dev/null && \
-     grep -qF 'plugins/**' ~/.claude/settings.json 2>/dev/null
-   ```
-   Exit 0 → both rules present, skip the rest of Step 0.
-
-2. Otherwise resolve `$HOME` and ask:
-
-   > `Without permission rules, every read of this plugin's pipeline files will prompt for approval. Add these two rules to ~/.claude/settings.json?`
-   > - `Read(<HOME>/.claude/plugins/cache/agile-dev/**)` — narrow
-   > - `Read(<HOME>/.claude/plugins/**)` — broad
-   >
-   > `One-time setup. (yes / no)`
-
-3. **yes** → Edit `~/.claude/settings.json` to ensure both rules are in `permissions.allow` (create file / keys / rules as needed; idempotent on existing rules). Confirm: `Permission rules added.`
-4. **no** → Continue. Say: `Proceeding without the rules. You will be prompted per pipeline file.`
-5. **Malformed JSON** → do not edit. Say: `~/.claude/settings.json is malformed; please fix manually. Skipping.`
+Iteration phase runner. Runs the iteration loop forward through every phase until it hits a ⛳ CHECKPOINT or backlog exhaustion. State is saved to `state.md` after each approval; closing the session at any point is a safe pause.
 
 ---
 
@@ -39,14 +14,8 @@ Read `.project-artifacts/state.md`.
 - Vision / Architecture / Backlog not complete: stop. Say `Foundation incomplete. Run /agile-dev:start or /agile-dev:improve first.`
 - Environment not marked complete: run Environment now.
   - Load `${CLAUDE_PLUGIN_ROOT}/pipeline/environment.md` and `.project-artifacts/f2-architecture.md`.
-  - Generate `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, project `.claude/settings.json`.
-  - ⛳ CHECKPOINT Environment: user confirms they are inside the container. Mark `Environment ✓` in `state.md`.
-
-**Container check** — if `Environment ✓` is marked in `state.md`, iteration phases must run inside the dev container. Run `test -f /.dockerenv && echo INSIDE || echo OUTSIDE`. If the result is `OUTSIDE`, refuse:
-
-> `You're on the host, but iteration phases must run inside the dev container. Reopen the project in the container (VS Code / Cursor: Cmd+Shift+P → "Dev Containers: Reopen in Container"; JetBrains: right-click .devcontainer/devcontainer.json → Dev Containers → Create Dev Container and Mount Sources), then re-run /agile-dev:iterate.`
-
-Then stop. Do not proceed to Step 2.
+  - Generate the production build recipe and optionally dev container files.
+  - ⛳ CHECKPOINT Environment: user approves the environment setup. Mark `Environment ✓` in `state.md`.
 
 If `$ARGUMENTS` is provided, treat it as an epic-name override. See *Argument behaviour* at the bottom.
 
@@ -102,21 +71,21 @@ If `$ARGUMENTS` is provided, treat it as an epic-name override. See *Argument be
 - **autonomy override** — applied globally to all checkpoints in this session:
   - `user-driven` → every ⛳ checkpoint (mandatory and conditional) pauses for explicit APPROVE. Auto-skip / auto-continue rules are disabled.
   - `semi-automatic` → phase-specific rules apply as written. Mandatory checkpoints pause; conditional ones auto-skip / auto-continue per their phase rule.
-  - `ai-driven` → all checkpoints auto-continue except Vision (covered in Foundation). Retrospective produces its artifact and auto-loops to the next iteration. User can interrupt only by closing the session.
+  - `ai-driven` → all checkpoints auto-continue. User can interrupt only by closing the session.
 - **test_coverage override** — applied to the phase sequence:
-  - `thorough` / `minimal` → run all seven iteration phases. Test Plan and Verification scope adjusts internally (see those phase files).
-  - `none` → **skip Test Plan and Verification entirely**. The phase sequence becomes Refinement → Decomposition → Development → Integration → Retrospective. When advancing past Decomposition, set `current_phase: Development` (not Test Plan). When advancing past Development, set `current_phase: Integration` (not Verification). Do not write `i3-test-plan.md` or `i5-verify.md`.
+  - `thorough` / `minimal` → run all phases. Test Plan (inside Planning) and Verification scope adjusts internally.
+  - `none` → **skip Test Plan and Verification entirely**. The phase sequence becomes Refinement → Decomposition → Development → Integration. When advancing past Decomposition, set `current_phase: Development`. Do not write the Test Scenarios section of `i2-plan.md` or the Verification section of `i3-outcome.md`.
 - **detail override** — passed through to each phase (each phase file has a Policy effects section explaining its variants).
 - **packaging override** — applied at Integration's step 7:
   - `each` → Integration packages a deliverable artifact in `dist/<NNN>-<slug>/` every iteration and smoke-tests it (per `test_coverage`).
   - `milestone` → Integration skips packaging by default; the `/agile-dev:release` command produces the artifact at the release boundary.
-  - `final` → Integration skips packaging in normal iterations. The user explicitly requests a build via `/agile-dev:release` (or by editing `policy.md` to `each` for one iteration).
+  - `final` → Integration skips packaging in normal iterations.
 
-If `policy.md` is missing (older project predating this feature, or a Foundation that never set policy), default to `semi-automatic / full / thorough` (matches the previous behaviour). Print a one-line note: `No policy.md found; defaulting to semi-automatic / full / thorough.`
+If `policy.md` is missing, default to `semi-automatic / full / thorough`. Print a one-line note: `No policy.md found; defaulting to semi-automatic / full / thorough.`
 
 Read the phase file for `current_phase`. Load artifacts listed in the phase's `Load:` line — but **skip Read calls for files already in this session's context**. The `Load:` list is a requirement, not a sequence of Read calls.
 
-**After each phase finishes** (checkpoint APPROVE, auto-continue, or no-checkpoint completion): advance `current_phase` in `state.md` and run the next phase in the same session. Apply the test_coverage override above when deciding which next phase to run. Do not ask the user to re-invoke `/agile-dev:iterate`. The loop pauses only at: a ⛳ CHECKPOINT awaiting APPROVE (per the autonomy override), the user closing the session, or the Retrospective iteration-boundary choice (skipped for `ai-driven`).
+**After each phase finishes** (checkpoint APPROVE, auto-continue, or no-checkpoint completion): advance `current_phase` in `state.md` and run the next phase in the same session. Apply the test_coverage override above when deciding which next phase to run. Do not ask the user to re-invoke `/agile-dev:iterate`. The loop pauses only at: a ⛳ CHECKPOINT awaiting APPROVE (per the autonomy override), or the user closing the session.
 
 ---
 
@@ -132,40 +101,33 @@ Read the phase file for `current_phase`. Load artifacts listed in the phase's `L
 
 ---
 
-### Phase: Decomposition
+### Phase: Decomposition + Plan
 
 **Load:** `${CLAUDE_PLUGIN_ROOT}/pipeline/decomposition.md`; `i1-spec.md`.
 
-**Do:** Generate task list per decomposition.md. Delegate drafting to a subagent unless trivial.
+**Do:**
+1. Generate task list per decomposition.md. Delegate drafting to a subagent unless trivial.
+2. Immediately run the Test Plan phase (load `${CLAUDE_PLUGIN_ROOT}/pipeline/test-plan.md`). Write BDD scenarios from ACs. Delegate scenario drafting to a subagent. Assign **level** (Unit / Component / Contract / System-integration / E2E) and **type** (UI / API / Protocol / CLI / File-batch) yourself. For existing codebases: also write regression scenarios.
+   - Skip Test Plan (step 2) when `test_coverage = none`.
 
-**Save:** `.project-artifacts/iterations/<NNN>-<slug>/i2-tasks.md`
+**Save:** `.project-artifacts/iterations/<NNN>-<slug>/i2-plan.md`
+- Tasks section (from Decomposition)
+- Test Scenarios section (from Test Plan, unless `test_coverage = none`)
 
-**Checkpoint — conditional:**
-- Auto-continue if every task maps to an AC or a standard cross-cutting category, roles are unambiguous, and no scope was added beyond the spec.
-- Otherwise ⛳ CHECKPOINT: present the list; wait for APPROVE.
-
----
-
-### Phase: Test Plan
-
-**Load:** `${CLAUDE_PLUGIN_ROOT}/pipeline/test-plan.md`; `i1-spec.md`.
-
-**Do:** Write BDD scenarios from ACs. Delegate scenario drafting to a subagent. Assign **level** (Unit / Component / Contract / System-integration / E2E) and **type** (UI / API / Protocol / CLI / File-batch) yourself — these decide which phase owns each scenario. For existing codebases: also write regression scenarios for behaviour this epic touches; scope to what the epic actually changes.
-
-**Save:** `.project-artifacts/iterations/<NNN>-<slug>/i3-test-plan.md`
-
-**⛳ CHECKPOINT:** Present the test plan; wait for APPROVE.
+**Checkpoint — conditional (after both tasks and scenarios are ready):**
+- Auto-continue if: every task maps to an AC or a standard cross-cutting category, roles are unambiguous, no scope added beyond the spec, and every AC has a scenario at its lowest meaningful level (or `test_coverage = none`).
+- Otherwise ⛳ CHECKPOINT: present `i2-plan.md`; wait for APPROVE.
 
 ---
 
 ### Phase: Development
 
-**Load:** `${CLAUDE_PLUGIN_ROOT}/pipeline/development.md`; `i1-spec.md`, `i2-tasks.md`, `i3-test-plan.md`.
+**Load:** `${CLAUDE_PLUGIN_ROOT}/pipeline/development.md`; `i1-spec.md`, `i2-plan.md`.
 
 **Do:**
 1. Baseline (existing codebases): run the in-process suite. Pre-existing failures become separate FIX epics.
 2. Implement DEV tasks TDD-style. In-process tests only here (Unit / Component / in-process Contract). Out-of-process levels belong to Verification.
-3. Update `i2-tasks.md` in place: `[x]` done / `[~]` deferred / `[ ]` pending.
+3. Update the Tasks section of `i2-plan.md` in place: `[x]` done / `[~]` deferred / `[ ]` pending.
 4. Wire up external interfaces so Verification can drive them out-of-process.
 5. Commit small and often — do not bundle the iteration into a single commit.
 6. Security rules: env vars only, `.env.example`, `.gitignore`.
@@ -174,78 +136,67 @@ Read the phase file for `current_phase`. Load artifacts listed in the phase's `L
 
 **No checkpoint.**
 
-**Save:** `i4-dev.md` — files changed; in-process tests by level + AC each covers; external interfaces wired; key decisions; deviations; self-review result.
+**Save:** Development section of `.project-artifacts/iterations/<NNN>-<slug>/i3-outcome.md` (create file with `# Iteration NNN Outcome` heading).
 
 ---
 
 ### Phase: Verification
 
-**Load:** `${CLAUDE_PLUGIN_ROOT}/pipeline/verification.md`; `i1-spec.md`, `i3-test-plan.md`, `i4-dev.md`. From `f2-architecture.md` load only the **Integration Strategy** table and **Project Type Adaptations** section.
+**Load:** `${CLAUDE_PLUGIN_ROOT}/pipeline/verification.md`; `i1-spec.md`, `i2-plan.md` (Scenarios section), `i3-outcome.md` (Development section). From `f2-architecture.md` load only the **Integration Strategy** table and **Project Type Adaptations** section.
 
 **Do:**
 1. Stand up test environment (Testcontainers / docker-compose / ephemeral). Record reproduction steps.
 2. Stub external third parties via real mock-server processes. No in-process mocks at this level.
-3. Implement and run every System-integration + E2E + out-of-process Contract scenario **as test files in the project's test framework**. Do not chat-drive `curl`/`grpcurl`/etc. (see verification.md anti-pattern).
+3. Implement and run every System-integration + E2E + out-of-process Contract scenario **as test files in the project's test framework**. Do not chat-drive `curl`/`grpcurl`/etc.
 4. Stabilise flakes by fixing root causes. Quarantine with written reason + follow-up task as a last resort.
 5. Confirm AC coverage. Each AC has ≥1 Verification scenario unless it has no out-of-process observable.
 6. Subagents in parallel for independent scenarios.
 
 **No checkpoint.** Quality is enforced by the tests.
 
-**Save:** `i5-verify.md` — environment + reproduction; stubs; tests by level/type with AC each covers; run results; quarantined items; AC coverage table.
+**Save:** Verification section appended to `i3-outcome.md`.
 
 ---
 
 ### Phase: Integration
 
-**Load:** `${CLAUDE_PLUGIN_ROOT}/pipeline/integration.md`; `i1-spec.md`, `i4-dev.md`, `i5-verify.md`. From `f1-vision.md` load only the **Key user journeys** section.
+**Load:** `${CLAUDE_PLUGIN_ROOT}/pipeline/integration.md`; `i1-spec.md`, `i3-outcome.md`. From `f1-vision.md` load only the **Key user journeys** section.
 
 **Do:**
 1. Build (production command).
 2. Prepare `.env` (classify variables, pre-fill safe defaults, request real credentials).
 3. Start the app; verify it connects to all required services.
 4. Manual smoke of the core user journey. Keep brief — Verification already covered the scenarios.
-5. Confirm `i5-verify.md`: all non-quarantined passed; every AC traces to a passing scenario.
-6. Demo script if the epic produces something demonstrable. Note explicitly if not.
-7. Fix Integration-only issues. Defects from earlier phases should already be closed.
+5. Confirm Verification section of `i3-outcome.md`: all non-quarantined passed; every AC traces to a passing scenario.
+6. Package deliverable artifact per `packaging` policy (step 7 of integration.md).
+7. Demo script if the epic produces something demonstrable. Note explicitly if not.
 
-**Save:** `i6-int.md` — build status; env prep; start result; smoke outcome; Verification roll-up; AC pass/fail table; Integration-phase issues; demo outcome.
+**Save:** Integration section appended to `i3-outcome.md`.
 
 **Checkpoint — conditional:**
-- Auto-continue when all of: build green, every non-quarantined Verification scenario passed, every AC covered. Announce `Integration green — continuing with Retrospective.`
-- Otherwise ⛳ CHECKPOINT: present `i6-int.md` + `i5-verify.md`. User chooses APPROVE (accept as-is), REJECT (loop back — see *Mid-iteration recovery*), or release boundary.
+- Auto-continue when all of: build green, every non-quarantined Verification scenario passed, every AC covered.
+- Otherwise ⛳ CHECKPOINT: present `i3-outcome.md`. User chooses APPROVE (accept), REJECT (loop back — see *Mid-iteration recovery*), or release boundary.
 
 **Release boundary:** if APPROVE *and* this iteration is a release boundary (MVP done, milestone), stop and say `Integration approved. Release boundary — run /agile-dev:release before continuing.`
 
----
+**Iteration boundary (after APPROVE or auto-continue):** ask once:
 
-### Phase: Retrospective
+> `Iteration <N> complete. Any backlog changes before the next iteration? (list changes or press enter to continue)`
 
-**Load:** `${CLAUDE_PLUGIN_ROOT}/pipeline/retrospective.md`; `i1-spec.md`, `i3-test-plan.md`, `i4-dev.md`, `i5-verify.md`, `i6-int.md`.
+- Changes listed → apply to `f3-backlog.md` and Backlog table in `state.md`, then close (Step 4).
+- Enter / no changes → close immediately (Step 4).
 
-**Do:** Interactive. Only surface findings that drive a concrete change. Update `f3-backlog.md` and the backlog table in `state.md` if epics added / removed / re-prioritised.
-
-**Save:** `i7-retro.md`
-
-**⛳ CHECKPOINT — iteration boundary.** Always stops here. Present:
-- Retro action items (or `No plan changes`)
-- Updated backlog snapshot
-- Proposed next epic (apply Step 2 selection rule: name when unambiguous, list candidates when ambiguous, none if empty)
-
-User chooses:
-- **APPROVE** — close this iteration (Step 4) and continue immediately into the next.
-- **APPROVE + STOP** — close this iteration but pause; next `/agile-dev:iterate` starts fresh.
-- **REJECT / edit** — revise and re-present.
+For `autonomy = ai-driven`: skip the question. Close immediately.
 
 ---
 
 ## Step 4 — Close the iteration
 
-After Retrospective is approved:
+After Integration APPROVE (and iteration-boundary question):
 
 1. **state.md:**
    - Mark **every bundled epic** `DONE` in Backlog table.
-   - Append to Completed iterations: `| <NNN> | <epic-list-with-sizes> | DONE | <YYYY-MM-DD> | <retro highlight or "No plan changes"> | iterations/<NNN>-<first-epic-slug>/i7-retro.md |`
+   - Append to Completed iterations: `| <NNN> | <epic-list-with-sizes> | DONE | <YYYY-MM-DD> | <one-line summary or "No changes"> | iterations/<NNN>-<first-epic-slug>/i3-outcome.md |`
      - Single epic: `EP-1 User auth (XL)`. Bundle: `EP-3 Search index (L) + EP-7 Filter UI (M) + EP-9 Pagination (M)`.
    - Clear `current_epic`; set `current_phase: Idle`; increment `iteration`.
    - All backlog epics `DONE` → also set `status: COMPLETE`.
@@ -255,21 +206,19 @@ After Retrospective is approved:
    ## [Iteration <NNN>] — <epic-list> — <YYYY-MM-DD>
 
    ### Added / Changed / Fixed
-   - **EP-<id> <name>:** <line drawn from i4-dev.md, i5-verify.md, i6-int.md for this epic>
-   - **EP-<id> <name>:** <line for the next bundled epic>
+   - **EP-<id> <name>:** <line drawn from i3-outcome.md for this epic>
 
-   Retro: iterations/<NNN>-<first-epic-slug>/i7-retro.md
+   Outcome: iterations/<NNN>-<first-epic-slug>/i3-outcome.md
    ```
    For a single-epic iteration the bullet list collapses to one bullet without the `EP-x` prefix.
 
 3. Report: `Iteration <NNN> complete. <N> epic(s) done: <epic-list>.` Show remaining backlog.
 
-4. **Branch based on user's Retrospective choice + state:**
-   - Retro flagged Vision / Architecture / Backlog action items → stop. Say `Retro flagged a foundation change — run /agile-dev:revise <phase> before the next iteration.`
-   - User chose **APPROVE + STOP** → stop. Say `Iteration closed. Run /agile-dev:iterate when ready.`
+4. **Branch based on state:**
+   - Iteration-boundary changes flagged a Vision / Architecture / Backlog action that requires foundation work → stop. Say `Foundation change needed — run /agile-dev:revise <phase> before the next iteration.`
    - Backlog empty → stop. Say `Backlog is empty — pipeline complete.`
-   - Next epic selection is **ambiguous** (≥2 tied at top priority) → ask the disambiguation question from Step 2.3 in this same session, then start the next iteration's Refinement. This is one question, not a new approval gate.
-   - Otherwise (APPROVE + unambiguous next epic + no foundation flag): loop back to Step 2 in the same session. Do not wait for the user.
+   - Next epic selection is **ambiguous** (≥2 tied at top priority) → ask the disambiguation question from Step 2 in this same session, then start the next iteration's Refinement. This is one question, not a new approval gate.
+   - Otherwise (no foundation flag, backlog not empty, unambiguous next epic): loop back to Step 2 in the same session. Do not wait for the user.
 
 ---
 
@@ -292,8 +241,8 @@ Half the spec is out of scope, architecture needs to change before the rest can 
 **For a single-epic iteration:**
 
 1. Rename `iterations/<NNN>-<slug>/` → `iterations/<NNN>-A-<slug>/`. Fix internal cross-references.
-2. Set `current_phase: Retrospective`. Run Retrospective for N-A: write `i7-retro.md` covering what shipped, what was deferred, why the split.
-3. Append to Completed iterations: `| <NNN>-A | <epic> | DONE | <date> | <summary + split reason> | iterations/<NNN>-A-<slug>/i7-retro.md |`. CHANGELOG entry for what N-A delivered.
+2. Set `current_phase: Integration`. Run Integration for N-A with what shipped; complete the iteration boundary close for N-A.
+3. Append to Completed iterations: `| <NNN>-A | <epic> | DONE | <date> | Split — deferred remainder to N-B | iterations/<NNN>-A-<slug>/i3-outcome.md |`. CHANGELOG entry for what N-A delivered.
 4. Open N-B: create `iterations/<NNN>-B-<slug>/`, set `current_phase: Refinement`. Keep `current_epic`. Iteration counter unchanged until N-B closes.
 5. N-B runs the full phase loop. Closes as `<NNN>-B` in Completed iterations.
 
@@ -304,29 +253,26 @@ Half the spec is out of scope, architecture needs to change before the rest can 
 3. Split:
    - **N-A epics** = bundled epics minus broken minus their dependents. These can still ship.
    - **N-B epics** = broken epics + their dependents. These move to a fresh iteration with replanned scope.
-4. **Edge case — N-A is empty** (broken epic blocks everything else, or every epic is broken): this isn't a split; it's a Tier 3 abandon. Switch to Tier 3 below.
-5. **Edge case — N-B is just one epic and it's truly abandoned** (not deferred, removed from backlog entirely): close N-A as a normal iteration (no split); record the abandoned epic in the Retrospective with reason. Skip the rest of Tier 2.
+4. **Edge case — N-A is empty**: this is a Tier 3 abandon. Switch to Tier 3 below.
+5. **Edge case — N-B is just one epic and it's truly abandoned** (removed from backlog): close N-A as a normal iteration; record the abandoned epic with reason. Skip the rest of Tier 2.
 6. Otherwise execute the split:
    a. Rename `iterations/<NNN>-<slug>/` → `iterations/<NNN>-A-<slug>/`. Fix internal cross-references.
-   b. Update artifacts inside N-A's directory to drop the broken/deferred epics from their per-epic sections (so `i1-spec.md`, `i2-tasks.md`, etc. only describe what N-A ships). Move the dropped sections to `iterations/<NNN>-A-<slug>/deferred-to-N-B.md` for the record.
-   c. Set `current_phase: Retrospective`. Run Retrospective for N-A: `i7-retro.md` covers what shipped, what was deferred, why the split.
-   d. Append to Completed iterations: `| <NNN>-A | <N-A epic-list> | DONE | <date> | Split — moved <N-B epic-list> to N-B because <reason> | iterations/<NNN>-A-<slug>/i7-retro.md |`.
+   b. Update artifacts inside N-A's directory to drop the broken/deferred epics from their per-epic sections. Move the dropped sections to `iterations/<NNN>-A-<slug>/deferred-to-N-B.md` for the record.
+   c. Run Integration for N-A; complete the iteration-boundary close for N-A.
+   d. Append to Completed iterations: `| <NNN>-A | <N-A epic-list> | DONE | <date> | Split — moved <N-B epic-list> to N-B | iterations/<NNN>-A-<slug>/i3-outcome.md |`.
    e. CHANGELOG entry for what N-A delivered.
-   f. Mark N-A epics `DONE` in Backlog table; deferred N-B epics revert to `TODO` (they'll be picked up by the next Step 2 bundle selection — or by N-B directly, see g).
-   g. Open N-B: create `iterations/<NNN>-B-<first-N-B-epic-slug>/`. Set `current_epic` to the N-B epic-list. Set `current_phase: Refinement` (N-B usually needs replanning). Iteration counter unchanged until N-B closes.
+   f. Mark N-A epics `DONE`; deferred N-B epics revert to `TODO`.
+   g. Open N-B: create `iterations/<NNN>-B-<first-N-B-epic-slug>/`. Set `current_epic` to the N-B epic-list. Set `current_phase: Refinement`. Iteration counter unchanged until N-B closes.
    h. N-B runs the full phase loop. Closes as `<NNN>-B` in Completed iterations.
-
-It's fine to stop iteration N-A earlier than originally planned if the broken epic forces scope/plan changes. The split exists to preserve work, not to enforce a full iteration on partial scope.
 
 ### Tier 3 — Abandon (cannot keep partial work)
 
 Foundational assumption was wrong / epic no longer needed / external dependency gone.
 
-1. Set `current_phase: Retrospective`. Short retro on why it failed and what to do with the epic.
-2. Write `i7-retro.md` with the abandonment reason.
-3. Append to Completed iterations: `| <NNN> | <epic> | ABANDONED | <date> | <reason> | iterations/<NNN>-<slug>/i7-retro.md |`.
-4. No CHANGELOG entry.
-5. Reset `current_epic`, `current_phase: Idle`, increment `iteration`. Apply any backlog changes from the retro.
+1. Set `current_phase: Integration`. Brief Integration run: build status only; skip smoke if nothing was built.
+2. Append to Completed iterations: `| <NNN> | <epic> | ABANDONED | <date> | <abandonment reason> | — |`.
+3. No CHANGELOG entry.
+4. Reset `current_epic`, `current_phase: Idle`, increment `iteration`. Apply any backlog changes from the decision.
 
 ### Choosing a tier
 
@@ -339,7 +285,7 @@ Lowest that fits. Uncertain between 1 and 2 → ask the user. Tier 3 only when t
 ```
 mode: greenfield | improve
 current_epic: <epic name or empty>
-current_phase: <Idle | Refinement | Decomposition | Test Plan | Development | Verification | Integration | Retrospective>
+current_phase: <Idle | Refinement | Decomposition | Development | Verification | Integration>
 iteration: <number>
 ```
 

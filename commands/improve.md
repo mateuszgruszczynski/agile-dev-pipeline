@@ -16,32 +16,7 @@ Each phase definition lives in its own file under `${CLAUDE_PLUGIN_ROOT}/pipelin
 
 ---
 
-## Step 0 — Plugin self-permissions (one-time per user)
-
-Before reading any pipeline files, ensure the user has authorised reads of this plugin's directory in their user settings. Two rules together: narrow + broad. Both are needed because Claude Code's permission matcher inconsistently honours broad `**` rules for the plugin dir. Idempotent — silently no-ops once both rules are present.
-
-1. Check whether both rules exist:
-   ```
-   grep -qF 'plugins/cache/agile-dev/**' ~/.claude/settings.json 2>/dev/null && \
-     grep -qF 'plugins/**' ~/.claude/settings.json 2>/dev/null
-   ```
-   Exit 0 → both rules present, skip the rest of Step 0.
-
-2. Otherwise resolve `$HOME` and ask:
-
-   > `Without permission rules, every read of this plugin's pipeline files will prompt for approval. Add these two rules to ~/.claude/settings.json?`
-   > - `Read(<HOME>/.claude/plugins/cache/agile-dev/**)` — narrow
-   > - `Read(<HOME>/.claude/plugins/**)` — broad
-   >
-   > `One-time setup. (yes / no)`
-
-3. **yes** → Edit `~/.claude/settings.json` to ensure both rules are in `permissions.allow` (create file / keys / rules as needed; idempotent on existing rules). Confirm: `Permission rules added.`
-4. **no** → Continue. Say: `Proceeding without the rules. You will be prompted per pipeline file.`
-5. **Malformed JSON** → do not edit. Say: `~/.claude/settings.json is malformed; please fix manually. Skipping.`
-
----
-
-## Step 0.5 — Pipeline policy (one-time per project)
+## Step 0 — Pipeline policy (one-time per project)
 
 Configure three policy knobs for this project: autonomy, detail, test_coverage. Stored at `.project-artifacts/policy.md`. Idempotent — silently no-ops once the file exists.
 
@@ -205,11 +180,10 @@ Apply the standard checkpoint protocol at each phase.
 
 After Backlog is approved, load `${CLAUDE_PLUGIN_ROOT}/pipeline/environment.md` and follow it:
 - Read `.project-artifacts/f2-architecture.md` to determine the stack.
-- Generate `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, and `.claude/settings.json`.
-- Present the three files to the user and instruct them to reopen the project in the container.
-- ⛳ CHECKPOINT Environment: user confirms they are inside the container. Mark `Environment ✓` in `state.md`.
+- Generate the production build recipe and optionally a dev container if the stack requires it.
+- ⛳ CHECKPOINT Environment: user reviews and approves the environment setup. Mark `Environment ✓` in `state.md`.
 
-**Stop here.** Say: "Foundation complete. Reopen the project in the dev container, then run `/agile-dev:iterate` to begin the first iteration (Refinement)."
+**Stop here.** Say: "Foundation complete. Run `/agile-dev:iterate` to begin the first iteration."
 
 Do **not** run iteration phases in this session. Each phase runs in its own session via `/agile-dev:iterate` to keep sessions small and token-efficient.
 
@@ -229,12 +203,8 @@ Do **not** run iteration phases in this session. Each phase runs in its own sess
   iterations/
     001-<epic-slug>/                  ← split iterations use 001-A-<slug> / 001-B-<slug>
       i1-spec.md                      ← Refinement
-      i2-tasks.md                     ← Decomposition
-      i3-test-plan.md                 ← Test Plan
-      i4-dev.md                       ← Development summary
-      i5-verify.md                    ← Verification result (out-of-process tests)
-      i6-int.md                       ← Integration result
-      i7-retro.md                     ← Retrospective
+      i2-plan.md                      ← Decomposition + Test Plan (tasks + BDD scenarios)
+      i3-outcome.md                   ← Development + Verification + Integration results
   releases/
     v1.0.0.md                         ← release notes (created by /agile-dev:release)
 CHANGELOG.md                          ← root of project; appended at iteration close, version-grouped at release

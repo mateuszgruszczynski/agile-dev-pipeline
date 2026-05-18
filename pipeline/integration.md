@@ -7,8 +7,7 @@
 ## Inputs
 
 - `i1-spec.md` — ACs to walk
-- `i4-dev.md` — Development summary
-- `i5-verify.md` — Verification summary. Any failure or quarantine here must be resolved or explicitly accepted before this phase completes.
+- `i3-outcome.md` (Development + Verification sections) — implementation summary and test results. Any Verification failure or quarantine must be resolved or explicitly accepted before this phase completes.
 - `f1-vision.md` — **Key user journeys** section only
 
 ---
@@ -42,9 +41,9 @@
 
    **Keep the smoke brief.** Verification already proved the scenarios. One or two touchpoints to confirm "assembled app runs, front door works". Long `curl` / click-through sequences here usually mean Verification missed a scenario — record it in the Test Plan for next iteration; do not silently retest in chat.
 
-6. **Confirm Verification results** from `i5-verify.md`:
+6. **Confirm Verification results** from the Verification section of `i3-outcome.md`:
    - All System-integration and E2E scenarios passed (or quarantined with reason + follow-up task).
-   - Each AC covered by a Verification scenario, or by in-process tests in `i4-dev.md` when there's no out-of-process observable.
+   - Each AC covered by a Verification scenario, or by in-process tests in the Development section when there's no out-of-process observable.
    - Unresolved failure → do not proceed. Loop back per *Mid-iteration recovery* in [iterate.md](../commands/iterate.md).
 
 7. **Package the deliverable artifact** (when `policy.md` has `packaging: each`, or always at a `/agile-dev:release` boundary).
@@ -76,7 +75,7 @@
 - [ ] `.env` complete
 - [ ] App starts; required services connect
 - [ ] Manual smoke passes
-- [ ] All non-quarantined Verification scenarios in `i5-verify.md` pass
+- [ ] All non-quarantined Verification scenarios pass (see Verification section of `i3-outcome.md`)
 - [ ] Each AC traces to a passing scenario (Verification when out-of-process observable; in-process otherwise)
 - [ ] No known blocking bugs
 - [ ] Core user flow demonstrable without errors
@@ -88,33 +87,38 @@ DoD: Integration cannot be APPROVED until every condition in [definitions.md](de
 
 ## Output
 
-`i6-int.md`:
-- **Build status** — command, success/failure, warnings
-- **Environment preparation** — variables classified, real credentials required
-- **Application start** — health check, services connected
-- **Manual smoke** — what was walked, what passed, observations
-- **Verification roll-up** — pointer to `i5-verify.md` + one-line confirmation
-- **AC pass/fail table** — one row per AC, citing the scenario(s) that prove it
-- **Integration-phase issues** — defects from earlier phases should already be closed
-- **Demo outcome** — or "no demo applicable"
+Append an **Integration** section to `i3-outcome.md`:
+
+```markdown
+## Integration
+
+- Build status — command, success/failure, warnings
+- Environment preparation — variables classified, real credentials required
+- Application start — health check, services connected
+- Manual smoke — what was walked, what passed, observations
+- Verification roll-up — one-line confirmation from the Verification section above
+- AC pass/fail table — one row per AC, citing the scenario(s) that prove it
+- Integration-phase issues — defects from earlier phases should already be closed
+- Demo outcome — or "no demo applicable"
+```
 
 ---
 
-**⛳ CHECKPOINT Integration:** user reviews `i6-int.md` + `i5-verify.md`, watches the demo or signs off the checklist. Epic accepted or returned with specific feedback. (Conditional auto-continue rules live in [iterate.md](../commands/iterate.md).)
+**⛳ CHECKPOINT Integration:** user reviews `i3-outcome.md`, watches the demo or signs off the checklist. Epic accepted or returned with specific feedback. (Conditional auto-continue rules and iteration-boundary handling live in [iterate.md](../commands/iterate.md).)
 
 ## Policy effects
 
 `test_coverage` axis:
 - `thorough` / `minimal` — full behaviour above. AC table cites the Verification scenario(s) that prove each AC.
-- `none` — Verification phase was skipped, so there is no `i5-verify.md` and no Verification roll-up. The AC pass/fail table changes to a manual-smoke check: each AC is marked pass or fail based on the manual smoke walk-through, with a one-line note saying what the operator did to verify it. DoD's "every AC traces to a passing scenario" requirement drops; "manual smoke clean + build green" replaces it.
+- `none` — Verification phase was skipped, so the Verification section of `i3-outcome.md` is absent. The AC pass/fail table in the Integration section changes to a manual-smoke check: each AC is marked pass or fail based on the manual smoke walk-through, with a one-line note saying what the operator did to verify it. DoD's "every AC traces to a passing scenario" requirement drops; "manual smoke clean + build green" replaces it.
 
-`detail` axis (applies to `i6-int.md`):
+`detail` axis (applies to the Integration section of `i3-outcome.md`):
 - `full` — full output above.
-- `sparse` — drop the demo script outcome section if no demo is applicable; drop the issues section if empty.
-- `minimal` — build status + smoke outcome + AC pass/fail table only. No verification roll-up paragraph, no demo section.
+- `sparse` — drop the demo outcome if no demo applicable; drop issues if empty.
+- `minimal` — build status + smoke outcome + AC pass/fail table only. No verification roll-up, no demo section.
 
 `autonomy` axis: see [iterate.md](../commands/iterate.md) Step 3 — autonomy applies globally to checkpoint behaviour.
 
 ## Bundle handling
 
-`i6-int.md`'s AC pass/fail table groups rows per bundled epic. The manual smoke covers the union of user journeys touched by the bundle. One Integration phase per iteration regardless of bundle size — no per-epic checkpoints. Auto-continue-on-green still applies; "green" means every AC of every bundled epic traces to a passing scenario (or to a passing manual-smoke note when `test_coverage = none`).
+The Integration section's AC pass/fail table groups rows per bundled epic. The manual smoke covers the union of user journeys touched by the bundle. One Integration phase per iteration regardless of bundle size — no per-epic checkpoints. Auto-continue-on-green still applies; "green" means every AC of every bundled epic traces to a passing scenario (or to a passing manual-smoke note when `test_coverage = none`).
