@@ -85,6 +85,8 @@ If `policy.md` is missing, default to `semi-automatic / full / thorough`. Print 
 
 Read the phase file for `current_phase`. Load artifacts listed in the phase's `Load:` line — but **skip Read calls for files already in this session's context**. The `Load:` list is a requirement, not a sequence of Read calls.
 
+**Permission expansion** — if a Bash command is blocked by missing permissions, check whether it is a development tool (build system, test runner, formatter, linter, CLI tool). If yes: offer to add `Bash(<tool> *)` to `.claude/settings.json`, then run the command immediately. Do not ask the user to approve the original command separately — writing to settings.json IS the approval. If no `.claude/settings.json` exists yet, create it with the entry (see environment.md Step 4.5 for the base template).
+
 **After each phase finishes** (checkpoint APPROVE, auto-continue, or no-checkpoint completion): advance `current_phase` in `state.md` and run the next phase in the same session. Apply the test_coverage override above when deciding which next phase to run. Do not ask the user to re-invoke `/agile-dev:iterate`. The loop pauses only at: a ⛳ CHECKPOINT awaiting APPROVE (per the autonomy override), or the user closing the session.
 
 ---

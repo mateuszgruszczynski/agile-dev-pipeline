@@ -12,7 +12,15 @@
 - Performance or reliability requirements specific to this epic
 - Security considerations specific to this epic
 
-**Example questions to draw from — adapt to the conversation, do not run as a script:**
+**Implementation preferences — ask once, before writing ACs:**
+
+After the behavioral Q&A, always ask:
+
+> *"Before I write the spec, is there anything about how this should work that you want captured rather than left to me? For example: data model, matching or identity logic, algorithm choice, integration approach, performance tradeoffs — anywhere your preference should drive the design."*
+
+The user is both product owner and engineer. This question gives them a single open invitation to surface implementation opinions that behavioral questions won't reach. Take every answer seriously — treat it as a constraint in the spec, not a suggestion.
+
+**Example behavioral questions — adapt to the conversation, do not run as a script:**
 
 The list below is a non-exhaustive starter set. Pick the ones that close real gaps for *this* epic, ask follow-ups based on the answers, and skip any that the backlog detail block or earlier answers have already covered. **Stop asking when you have enough information to produce every item in the Output section below and every AC satisfies the Definition of Testability** — running through every example question is not the goal; getting to a confident, testable spec is.
 

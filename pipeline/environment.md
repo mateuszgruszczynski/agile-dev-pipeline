@@ -165,6 +165,57 @@ Notes:
 
 ---
 
+## Step 4.5 — Generate project `.claude/settings.json`
+
+Generate `.claude/settings.json` at the project root. This file is loaded by Claude Code for every session in this project (inside or outside plugin commands), pre-approving the stack's development tool commands so Claude never prompts for routine builds, tests, or linting.
+
+Always include the base set:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(ls *)", "Bash(find *)", "Bash(grep *)", "Bash(cat *)",
+      "Bash(head *)", "Bash(tail *)", "Bash(echo *)", "Bash(printf *)",
+      "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(rm *)",
+      "Bash(chmod *)", "Bash(touch *)", "Bash(env)", "Bash(which *)",
+      "Bash(curl *)", "Bash(wget *)", "Bash(pwd)", "Bash(wc *)",
+      "Bash(sort *)", "Bash(uniq *)", "Bash(awk *)", "Bash(sed *)",
+      "Bash(jq *)", "Bash(diff *)", "Bash(zip *)", "Bash(tar *)"
+    ]
+  }
+}
+```
+
+Add stack-specific entries on top of the base set:
+
+| Stack | Additional `allow` entries |
+|---|---|
+| Rust | `"Bash(cargo *)"`, `"Bash(rustc *)"`, `"Bash(rustup *)"` |
+| Node.js / npm | `"Bash(npm *)"`, `"Bash(npx *)"`, `"Bash(node *)"` |
+| Node.js / yarn | `"Bash(yarn *)"` |
+| Node.js / pnpm | `"Bash(pnpm *)"` |
+| TypeScript | `"Bash(tsc *)"` |
+| Python | `"Bash(python3 *)"`, `"Bash(python *)"`, `"Bash(pip3 *)"`, `"Bash(pip *)"`, `"Bash(pytest *)"`, `"Bash(uv *)"` |
+| Go | `"Bash(go *)"` |
+| Java | `"Bash(java *)"`, `"Bash(javac *)"` |
+| Maven | `"Bash(mvn *)"`, `"Bash(./mvnw *)"` |
+| Gradle | `"Bash(gradle *)"`, `"Bash(./gradlew *)"` |
+| .NET / C# | `"Bash(dotnet *)"` |
+| Ruby | `"Bash(ruby *)"`, `"Bash(bundle *)"`, `"Bash(rake *)"`, `"Bash(rspec *)"` |
+| Docker | `"Bash(docker *)"`, `"Bash(docker-compose *)"` |
+| Make | `"Bash(make *)"` |
+
+Add `dist/` and `.claude/` to `.gitignore` if not already present (`.claude/settings.json` is project-specific tooling config, not app source).
+
+**On-the-fly expansion** — if during any iteration phase Claude needs to run a command not covered by the above entries (e.g. a newly installed tool, a language-specific linter added mid-project), it should:
+1. Detect the tool name from the command (e.g. `cargo-deny`, `golangci-lint`, `hadolint`).
+2. Offer: `Add Bash(<tool> *) to .claude/settings.json so future runs don't prompt? (yes/no)`.
+3. If yes: edit `.claude/settings.json` to append the entry, then run the command. Do not ask the user to approve the command separately — adding it to settings.json IS the approval.
+
+---
+
 ## Step 5 — Present and confirm
 
 Present what was generated:
