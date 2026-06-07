@@ -108,8 +108,9 @@ Run `git rev-parse --git-dir 2>/dev/null` in the working directory. The pipeline
 Read `.project-artifacts/state.md` (if present) and check for foundation artifacts (`f1-vision.md`, `f2-architecture.md`, `f3-backlog.md`). Determine which of the five cases applies and act:
 
 **Case 1 — Truly fresh** (no `state.md`, no foundation artifacts): initialise state (see State file format below) and begin at Vision.
+- Check for `.project-artifacts/research/findings.md`. If present, read it silently and use it to pre-populate Vision and Architecture inputs — it contains feasibility verdict, recommended approach, data sources, and open questions from a prior `/agile-dev:research` run. Do not re-ask questions the research already answered; treat findings as established context, not suggestions.
 - If the user provided an initial idea via `$ARGUMENTS`, use it as the seed for Vision.
-- If no arguments, ask the user to describe what they want to build in one or two sentences.
+- If no arguments and no research findings, ask the user to describe what they want to build in one or two sentences.
 
 **Case 2 — Orphaned artifacts** (no `state.md` but foundation artifacts exist): ambiguous origin. Stop and ask:
 
@@ -167,6 +168,9 @@ All outputs are persisted as markdown files so the pipeline survives session res
   state.md                            ← pipeline position, backlog, and per-iteration history
   policy.md                           ← pipeline policy: autonomy / detail / test_coverage (set once at Step 0.5)
   pipeline-feedback.md                ← append-only meta-feedback about the agile-dev pipeline itself (created on first entry)
+  research/                           ← optional: created by /agile-dev:research before the pipeline starts
+    findings.md                       ← feasibility verdict, recommended approach, data sources, open questions
+    scripts/                          ← probe scripts written during research (kept for reference)
   f1-vision.md                        ← Vision output
   f2-architecture.md                  ← Architecture output
   f3-backlog.md                       ← Backlog output
