@@ -44,14 +44,19 @@ If `$ARGUMENTS` is provided, treat it as an epic-name override. See *Argument be
      - If the bundle is empty (first candidate): add it unconditionally (rule: a single oversized epic is always allowed).
      - For each subsequent candidate `c`: compute `stop_dev = |budget - sum|` and `add_dev = |budget - (sum + c.points)|`. If `add_dev < stop_dev`, add `c` and continue. If `add_dev ≥ stop_dev`, stop — current bundle is closer to budget.
    - Add to the bundle any **dependent epics of bundled epics** that are themselves in the unblocked pool — only if they fit the same closer-to-budget rule. This avoids leaving a dependent stranded right after its blocker just shipped.
-5. **Show the bundle to the user:**
+5. **Present the bundle, and decide whether to pause** (per the `autonomy` policy):
 
+   Build the summary first:
    > `Next iteration <N> bundle (budget = <budget> pts / <size>; total = <sum> pts):`
    > `  • EP-3 — Search index (L, 5.2 pts) P1`
    > `  • EP-7 — Filter UI (M, 3.0 pts) P1`
-   > `Proceed? (yes / edit <add EP-x | remove EP-y> / no)`
 
-6. **edit** branch: parse the user's add/remove instructions, re-validate (dependencies unblocked, epic in TODO pool), recompute total, re-present. Loop until user replies yes or no.
+   Then:
+   - `ai-driven` → print the summary as a notification and proceed to step 7. Never ask.
+   - `semi-automatic` (default) → **auto-proceed when the pick is unambiguous.** The pick is unambiguous when it is the plain greedy result with no judgment call: no other TODO epic ties at the same priority and would fit the budget equally well at the margin, and the bundle was not formed by force-adding a single oversized epic past budget. When unambiguous, print the summary and proceed to step 7 without asking. Only when the pick required judgment (an arbitrary tie-break, or a lone oversized epic) append `Proceed? (yes / edit <add EP-x | remove EP-y> / no)` and wait.
+   - `user-driven` → always append `Proceed? (yes / edit <add EP-x | remove EP-y> / no)` and wait.
+
+6. **edit** branch (only reachable when the question was asked): parse the user's add/remove instructions, re-validate (dependencies unblocked, epic in TODO pool), recompute total, re-present. Loop until user replies yes or no.
 7. **yes** branch: set `current_epic` in `state.md` to a comma-separated list of epic names from the bundle. Mark each bundled epic as `IN_PROGRESS` in the Backlog table. Set `current_phase: Refinement`. Iteration directory slug derives from the first (highest-priority) epic: `iterations/<NNN>-<first-epic-slug>/`. Proceed to Step 3.
 
 8. **no / empty backlog:**
@@ -85,7 +90,7 @@ If `policy.md` is missing, default to `semi-automatic / full / thorough`. Print 
 
 Read the phase file for `current_phase`. Load artifacts listed in the phase's `Load:` line — but **skip Read calls for files already in this session's context**. The `Load:` list is a requirement, not a sequence of Read calls.
 
-**Permission expansion** — if a Bash command is blocked by missing permissions, check whether it is a development tool (build system, test runner, formatter, linter, CLI tool). If yes: offer to add `Bash(<tool> *)` to `.claude/settings.json`, then run the command immediately. Do not ask the user to approve the original command separately — writing to settings.json IS the approval. If no `.claude/settings.json` exists yet, create it with the entry (see environment.md Step 4.5 for the base template).
+**Permissions are handled by the plugin's PreToolUse hooks** (`hooks/permission-gate.sh`, `hooks/write-guard.sh`) — do not stop to ask the user for tool approvals. Recognised dev tools (build / test / lint / format runners, local git, in-project writes) are auto-approved with no prompt; dangerous commands are blocked. A genuinely unrecognised command falls through to the normal permission flow and prompts once — that is expected, not an error to route around. If a project repeatedly uses a dev tool the hook doesn't recognise, the fix is to add it to the plugin's `hooks/guards.json` allow list (a plugin change), not to special-case it here.
 
 **After each phase finishes** (checkpoint APPROVE, auto-continue, or no-checkpoint completion): advance `current_phase` in `state.md` and run the next phase in the same session. Apply the test_coverage override above when deciding which next phase to run. Do not ask the user to re-invoke `/agile-dev:iterate`. The loop pauses only at: a ⛳ CHECKPOINT awaiting APPROVE (per the autonomy override), or the user closing the session.
 
@@ -95,11 +100,11 @@ Read the phase file for `current_phase`. Load artifacts listed in the phase's `L
 
 **Load:** `${CLAUDE_PLUGIN_ROOT}/pipeline/refinement.md`; epic detail block from `state.md` or `f3-backlog.md`.
 
-**Do:** Interactive Q&A. Delegate spec drafting to a subagent (see refinement.md). Review the result.
+**Do:** Interactive Q&A on behaviour, then surface and confirm the **design decisions** (how it will be built, including which external services are mockable vs. need real keys) — see refinement.md. This is the iteration's single engagement point. Delegate spec drafting to a subagent. Review the result.
 
-**Save:** `.project-artifacts/iterations/<NNN>-<slug>/i1-spec.md`
+**Save:** `.project-artifacts/iterations/<NNN>-<slug>/i1-spec.md` (spec + ACs + Design Decisions section)
 
-**⛳ CHECKPOINT:** Present spec; wait for APPROVE.
+**⛳ CHECKPOINT:** Present spec, ACs, and Design Decisions; wait for APPROVE. Approving locks both what and how.
 
 ---
 
@@ -108,7 +113,7 @@ Read the phase file for `current_phase`. Load artifacts listed in the phase's `L
 **Load:** `${CLAUDE_PLUGIN_ROOT}/pipeline/decomposition.md`; `i1-spec.md`.
 
 **Do:**
-1. Generate task list per decomposition.md. Delegate drafting to a subagent unless trivial.
+1. Read the **Design Decisions** already locked in `i1-spec.md` — do not re-ask them. Generate the task list per decomposition.md. Delegate drafting to a subagent unless trivial. If decomposition surfaces a genuinely new decision, record a reasonable default (semi-automatic/ai-driven) rather than pausing — see decomposition.md Step 1.
 2. Immediately run the Test Plan phase (load `${CLAUDE_PLUGIN_ROOT}/pipeline/test-plan.md`). Write BDD scenarios from ACs. Delegate scenario drafting to a subagent. Assign **level** (Unit / Component / Contract / System-integration / E2E) and **type** (UI / API / Protocol / CLI / File-batch) yourself. For existing codebases: also write regression scenarios.
    - Skip Test Plan (step 2) when `test_coverage = none`.
 
@@ -181,14 +186,13 @@ Read the phase file for `current_phase`. Load artifacts listed in the phase's `L
 
 **Release boundary:** if APPROVE *and* this iteration is a release boundary (MVP done, milestone), stop and say `Integration approved. Release boundary — run /agile-dev:release before continuing.`
 
-**Iteration boundary (after APPROVE or auto-continue):** ask once:
+**Iteration boundary (after APPROVE or auto-continue)** — per `autonomy` policy:
 
-> `Iteration <N> complete. Any backlog changes before the next iteration? (list changes or press enter to continue)`
-
-- Changes listed → apply to `f3-backlog.md` and Backlog table in `state.md`, then close (Step 4).
-- Enter / no changes → close immediately (Step 4).
-
-For `autonomy = ai-driven`: skip the question. Close immediately.
+- `user-driven` → ask once:
+  > `Iteration <N> complete. Any backlog changes before the next iteration? (list changes or press enter to continue)`
+  - Changes listed → apply to `f3-backlog.md` and the Backlog table in `state.md`, then close (Step 4).
+  - Enter / no changes → close immediately (Step 4).
+- `semi-automatic` (default) / `ai-driven` → **do not ask.** Close immediately and roll into the next iteration. The backlog is editable directly at any time (`f3-backlog.md`), and `/agile-dev:change` adds an epic mid-stream — a per-iteration prompt with an empty default isn't worth the interruption.
 
 ---
 

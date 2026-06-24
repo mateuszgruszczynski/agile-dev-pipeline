@@ -79,11 +79,16 @@ When web research alone cannot answer a question — because you need to see wha
 - Sampling a dataset to understand its shape and completeness
 - Checking robots.txt and crawl delays programmatically across multiple targets
 
+**⚠️ Connectivity is not capability.** A probe that gets `200 OK` from a list endpoint proves you can *reach* the API — it does **not** prove the specific capability your app depends on is available on the tier you tested. Docs routinely omit that the function you actually need is behind a paid plan, a partner agreement, KYC/approval, or a higher rate tier. So:
+- Probe the **exact capability the app relies on**, not a generic health/list call. If the app needs historical price data, fetch historical price data — not the docs' "getting started" endpoint.
+- When you hit auth or a paywall (`401`, `402`, `403`, "upgrade your plan"), that is a **finding**, not a failure to route around. Record exactly what was gated and what tier/approval it demanded.
+- If a capability cannot be exercised without paying or signing up, you **cannot** mark it verified. Mark it `MUST-VERIFY` (see Step 5) — never infer it works from adjacent endpoints that did.
+
 **How to write probe scripts:**
 - Use Python by default (available everywhere); switch to the project's language if it's already decided
 - One script per question — keep them short and focused
-- No error suppression — let failures surface clearly; a 403 or empty result is itself an answer
-- Print structured output: dump JSON, print field names, show sample records, report counts
+- No error suppression — let failures surface clearly; a 403, 402, or empty result is itself an answer
+- Print structured output: dump JSON, print field names, show sample records, report counts, **print HTTP status and any error/quota body verbatim**
 - Do not write production-quality code — these are throwaway probes; just make them work
 
 Run each script immediately after writing it. Use the output as evidence in Step 5.
@@ -94,32 +99,46 @@ Save all scripts to `.project-artifacts/research/scripts/<question-slug>.py`. Th
 
 ## Step 5 — Synthesise findings
 
-Compile everything into a research report with these sections:
+**Golden rule: nothing is a fact unless you verified it.** Docs and search results are *claims*. A probe run is *evidence* — but only for exactly what it exercised. Everything else is an *assumption*. The report must keep these three apart on every line; do not launder a claim or an assumption into a recommendation.
+
+Tag every finding with its provenance and confidence:
+- `[verified]` — a probe script exercised the exact capability and it worked. Cite the script.
+- `[claimed]` — stated by docs / a search result / a repo README, not independently confirmed.
+- `[assumption]` — inferred or filled in by you; nobody confirmed it.
+
+Compile the report with these sections:
+
+### Access & Cost reality check (mandatory)
+The most common silent killer: the API exists, but the function the app needs is gated behind money, approval, or KYC that the docs don't lead with. For **every** external dependency, answer explicitly — and tag each answer `[verified]` / `[claimed]` / `[assumption]`:
+
+| Dependency | Capability the app needs | Available on free/used tier? | Paywall / approval / KYC for *that* capability? | How confirmed |
+|---|---|---|---|---|
+| example.com API | historical price series | ? | ? | probe got 402 on /history → MUST-VERIFY |
+
+Any cell that is `?`, `[claimed]`, or `[assumption]` for a capability the app **depends on** becomes a **MUST-VERIFY** item, and:
+- **caps the Feasibility verdict at Yellow** (cannot be Green), and
+- becomes a hard pre-condition listed below (the pipeline will not start until it's resolved — see Step 6 and `start.md`).
 
 ### Feasibility verdict
 One of:
-- **Green** — no fundamental blockers found; recommend starting the pipeline
-- **Yellow** — viable, but address the following before starting: [list pre-conditions]
-- **Red** — fundamental blocker: [explain why and what would need to change]
+- **Green** — every capability the app depends on is `[verified]`; no open MUST-VERIFY access/cost item; no fundamental blocker.
+- **Yellow** — viable, but these must be resolved first: [list every MUST-VERIFY item + other pre-conditions]. A research run with *any* unverified access/cost dependency is Yellow at best, by rule.
+- **Red** — fundamental blocker: [explain why and what would need to change].
 
 ### Findings
-One section per research question. For each: what was found, what it means for the project. Include concrete evidence: API response fields, data source URLs, library names and versions, cost figures, TOS constraints.
+One section per research question. For each: what was found (with provenance tags), what it means for the project, and concrete evidence — API response fields, status codes seen, data-source URLs, library names/versions, cost figures, TOS constraints. Where a probe ran, cite the script and the actual output, not the doc.
 
 ### Recommended approach
-The preferred technical direction in 3–5 sentences: language, key libraries or external services, architecture sketch, main integration points. If a meaningful alternative exists, name it and explain why it was not recommended.
+The preferred technical direction in 3–5 sentences: language, key libraries or external services, architecture sketch, main integration points. State plainly which parts rest on `[verified]` evidence and which rest on `[claimed]`/`[assumption]` — the user is choosing a direction, and they need to know which load-bearing pieces are still unconfirmed. If a meaningful alternative exists, name it and why it was not recommended.
 
-### Data and API sources
-Table of every external source, service, or dataset relevant to the project:
-
-| Source | What it provides | Access | Cost | Notes |
-|---|---|---|---|---|
-| example.com API | Used car listings with price history | API key required | Free tier: 1000 req/day | TOS allows price aggregation; HTML scraping prohibited |
+### Key assumptions (register)
+A flat list of every `[assumption]` and load-bearing `[claimed]` item the recommendation depends on — about the world (API behaviour, cost, data quality, legal) **and** about intent (what "the app" is supposed to do where the brief was vague). Each line: the assumption, why it matters if wrong, and how to confirm it. This register is carried into `start.md` and surfaced for confirmation — it is the antidote to "decisions made automatically on research that turned out wrong."
 
 ### Open questions
-Anything research could not answer. For each: what would resolve it (a quick spike, a legal review, a test account, direct contact with the service provider).
+Anything research could not answer. For each: what would resolve it (a quick spike, a legal review, a test account, direct contact with the provider).
 
 ### Pre-conditions before starting the pipeline
-Specific things that must be true before `/agile-dev:start` is run. Examples: API key obtained, legal review completed, spike prototype validated, dataset confirmed to have required fields.
+Specific things that must be true before `/agile-dev:start` proceeds. Includes **every MUST-VERIFY access/cost item** plus the rest (API key obtained, paid tier confirmed, legal review done, spike validated, dataset confirmed to have required fields). Mark each as resolved/unresolved.
 
 ---
 
@@ -133,11 +152,16 @@ Specific things that must be true before `/agile-dev:start` is run. Examples: AP
    - yes: `git init`, create a minimal `.gitignore` (`.env`, `dist/`, `node_modules/`, `.DS_Store`), stage and commit with `chore: research findings`.
    - no: continue.
 
-**⛳ CHECKPOINT Research:** Present `findings.md`. User reviews and approves the findings.
+**⛳ CHECKPOINT Research:** Present `findings.md`, but do not just dump it — **walk the user through the risky parts and get a decision on each**:
+1. Read out the **MUST-VERIFY access/cost items** one by one. For each, ask the user to either confirm from their own knowledge ("yes, I have the paid tier" / "no, that function is enterprise-only") or accept it as an open pre-condition to verify before building. Update each item's status from their answer.
+2. Read out the **Key assumptions register**, especially any `[assumption]` about *what the app is meant to do*. Correct the user's intent here, now — this is where a vague brief gets misread.
+3. Restate the **Feasibility verdict** after their answers (it may move from Yellow toward Green as items resolve, or to Red if something they know rules it out).
+
+Then wait for approval.
 
 After approval, say:
 
-> *"Research complete. Run `/agile-dev:start` — the findings in `.project-artifacts/research/findings.md` will be loaded automatically during Vision and Architecture."*
+> *"Research complete. Run `/agile-dev:start`. The findings load into Vision and Architecture, and any unresolved MUST-VERIFY pre-condition will block the build until you resolve it — that's deliberate."*
 
 ---
 

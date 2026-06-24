@@ -1,5 +1,51 @@
 {
-  "block": [
+  "_comment": "Policy config for the agile-dev PreToolUse hooks. permission-gate.sh reads bash_deny + bash_allow_tools; write-guard.sh reads write_block + write_warn.",
+
+  "bash_deny": [
+    "(^|[;&|]\\s*)sudo\\b",
+    "\\brm\\s+(-[a-zA-Z]*\\s+)*(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)\\b.*\\s+(/|/\\*|~|\\$HOME|\\$\\{HOME\\})(\\s|/|$)",
+    "\\bnpm\\s+(install|i)\\b[^|;&]*\\s-g\\b",
+    "\\byarn\\s+global\\s+add\\b",
+    "\\bpnpm\\s+add\\b[^|;&]*\\s-g\\b",
+    "\\bpip3?\\s+install\\b[^|;&]*\\s--user\\b",
+    "\\bbrew\\s+(install|reinstall|upgrade)\\b",
+    "(^|[;&|]\\s*)(apt|apt-get|yum|dnf|pacman|apk)\\s+(install|remove|upgrade|update)\\b",
+    "(^|[;&|]\\s*)systemctl\\b",
+    "(^|[;&|]\\s*)launchctl\\b",
+    "(^|[;&|]\\s*)crontab\\b",
+    "\\bmkfs\\b",
+    "\\bdd\\s+if=.*of=/dev/",
+    ">\\s*/dev/(sd|disk|nvme)",
+    ":\\(\\)\\s*\\{\\s*:\\s*\\|\\s*:\\s*&\\s*\\}\\s*;\\s*:",
+    "\\bgit\\s+push\\b[^|;&]*--force\\b",
+    "\\bgit\\s+push\\b[^|;&]*\\s-f\\b"
+  ],
+
+  "bash_allow_tools": [
+    "ls", "cat", "head", "tail", "echo", "printf", "pwd", "which", "type",
+    "env", "wc", "sort", "uniq", "grep", "rg", "egrep", "fgrep", "find", "fd",
+    "diff", "awk", "sed", "cut", "tr", "basename", "dirname", "realpath",
+    "file", "stat", "du", "df", "tree", "date", "tee", "xargs", "test",
+    "mkdir", "cp", "mv", "rm", "touch", "chmod", "ln", "ls", "rmdir",
+    "tar", "zip", "unzip", "gzip", "gunzip", "jq", "yq", "curl", "wget",
+    "cargo", "rustc", "rustup", "rustfmt",
+    "npm", "npx", "node", "pnpm", "yarn", "tsc", "deno", "bun", "vite", "eslint", "prettier",
+    "python", "python3", "pip", "pip3", "pytest", "uv", "poetry", "pipx", "ruff", "mypy", "black", "flake8", "isort", "tox",
+    "go", "gofmt", "golangci-lint", "goimports",
+    "java", "javac", "mvn", "./mvnw", "mvnw", "gradle", "./gradlew", "gradlew", "kotlin", "kotlinc",
+    "dotnet",
+    "ruby", "bundle", "rake", "rspec", "gem", "rubocop",
+    "make", "cmake", "ctest", "ninja", "gcc", "g++", "clang", "clang++", "clang-format", "clang-tidy",
+    "php", "composer", "phpunit",
+    "swift", "swiftc",
+    "dart", "flutter",
+    "elixir", "mix",
+    "docker", "docker-compose",
+    "hadolint", "shellcheck", "shfmt", "yamllint", "markdownlint",
+    "git"
+  ],
+
+  "write_block": [
     "\\.env$",
     "\\.env\\.",
     "\\.pem$",
@@ -11,8 +57,8 @@
     "secret\\.json$",
     "\\.secret$"
   ],
-  "warn": [
-    "\\.claude/settings\\.json$",
+
+  "write_warn": [
     "\\.gitconfig$",
     "\\.bashrc$",
     "\\.zshrc$",

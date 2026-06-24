@@ -94,7 +94,7 @@ When the iteration covers multiple epics, the Verification section's AC coverage
 
 ## Definition of Done
 
-- Test environment reproducible and recorded in `i5-verify.md`
+- Test environment reproducible and recorded in `i3-outcome.md`
 - Every System-integration and E2E scenario from the Test Plan implemented and run
 - All non-quarantined tests pass
 - Every quarantined test has reason + follow-up FIX task
@@ -107,10 +107,10 @@ Fix any failure before Integration. No deferral.
 
 `test_coverage` axis:
 - `thorough` (default) — full behaviour above: implement every scenario, full AC coverage, mock-server stubs, real internal infra.
-- `minimal` — implement only the System-integration / E2E scenarios that exist in `i3-test-plan.md`. Under `test_coverage = minimal`, the Test Plan itself contains only happy-path scenarios — so this phase implements those happy paths only. No additional scenarios.
-- `none` — phase **skipped entirely**. Orchestrator goes Development → Integration. No `i5-verify.md`. Quality gate in Integration becomes manual smoke + the build passing.
+- `minimal` — implement only the System-integration / E2E scenarios that exist in `i2-plan.md`. Under `test_coverage = minimal`, the Test Plan itself contains only happy-path scenarios — so this phase implements those happy paths only. No additional scenarios.
+- `none` — phase **skipped entirely**. Orchestrator goes Development → Integration. No `i3-outcome.md`. Quality gate in Integration becomes manual smoke + the build passing.
 
-`detail` axis (applies to `i5-verify.md` content when phase runs):
+`detail` axis (applies to `i3-outcome.md` content when phase runs):
 - `full` — full output as above.
 - `sparse` — drop the per-scenario "AC each covers" breakdown; keep counts and run results.
 - `minimal` — environment + run results table only (pass/fail counts).

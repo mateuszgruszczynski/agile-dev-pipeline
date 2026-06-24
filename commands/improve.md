@@ -163,7 +163,7 @@ Produce the Analysis output as defined in `analysis.md` and save to `.project-ar
 
 After Analysis is approved, run Vision → Architecture → Backlog. For each phase: load its file from the table above, follow the phase definition, and apply these delta-mode rules throughout:
 
-- **Vision** (`vision.md`) — describe the desired end state. Use Analysis output to frame what is missing or needs to change. Do not re-describe what already works correctly.
+- **Vision** (`vision.md`) — describe the desired end state. Use Analysis output to frame what is missing or needs to change. Do not re-describe what already works correctly. **Set requirement rigor (risk-scaled):** turn on deep-requirements mode (the concrete interpretation playback in `vision.md`) when the improvement is vaguely specified or depends on external data / APIs the codebase doesn't already use — the existing code grounds *what is*, not *what you intend to add*. Skip it for a precise, self-contained change.
 - **Architecture** (`architecture.md`) — start from the C4 diagrams in Analysis. Describe only the changes: what to add, remove, or restructure. Flag any breaking changes to existing interfaces.
 - **Backlog** (`backlog.md`) — seed epics from the gap between Analysis and Vision. Include REFACTOR, FIX, and MIGRATION epic types alongside FEATURE. Tech debt from Analysis becomes explicit epics with priority, not hidden scope.
 

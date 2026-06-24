@@ -51,30 +51,15 @@ Documentation tasks appear in the task list like any other task, with a role own
 - Infrastructure and security tasks should not be deferred to the end
 - For epics with a UI: always include at least one DESIGN task and at least one E2E scenario of type UI. For backend / protocol-only epics, the equivalent E2E task is API / Protocol / CLI / File-batch typed — pick the type that matches how the epic is actually used
 
-**Step 1 — Implementation decisions review (before task generation)**
+**Step 1 — Read the locked design decisions (no new approval gate)**
 
-Read `i1-spec.md` and identify every non-trivial implementation decision the spec implies but does not specify. These are choices Claude would otherwise make silently and embed invisibly in tasks. Common categories:
+The non-trivial implementation choices were surfaced and confirmed during **Refinement** and live in the **Design Decisions** section of `i1-spec.md`. Read them — they are constraints for the task breakdown. Do **not** re-open them with the user.
 
-- Data model: schema structure, how entities are identified or deduplicated, indexing strategy
-- Algorithm or strategy: matching logic, ranking, caching, retry/backoff approach
-- Integration style: sync vs async, polling vs webhook, batch vs streaming
-- State management: where and how state is stored, consistency guarantees, handling of concurrent updates
-- Error and edge-case handling: what happens on partial failure, what the user sees
+Decomposition occasionally surfaces a genuinely new decision the spec didn't anticipate (a task ordering forces a structural choice, a dependency reveals a missing integration call). When that happens:
+- `semi-automatic` (default) / `ai-driven` → pick the reasonable default consistent with the spec and the existing decisions, and **record it** as an added line in the Design Decisions carried into `i2-plan.md`. Only pause if the new decision materially changes scope or contradicts an AC — that's a Refinement loop-back, not a task-planning question.
+- `user-driven` → present the new decision (Decision needed / Intended approach form) and wait.
 
-For each decision, present it as one of two forms:
-
-> **Decision needed — [topic]**
-> - Option A: [description] — [tradeoff]
-> - Option B: [description] — [tradeoff]
-> *(Option C if genuinely distinct)*
-> Which do you prefer?
-
-> **Intended approach — [topic]**
-> I'll [approach] because [reason]. Let me know if you'd like to do it differently.
-
-Use "Decision needed" when multiple approaches are genuinely reasonable and the choice has meaningful consequences. Use "Intended approach" when one path is clearly right for this stack and spec, but the choice is non-obvious enough that the user should know about it.
-
-Present all decisions together in one message. Wait for the user to respond. Record every confirmed choice as a **Design Decisions** section at the top of `i2-plan.md` before the Tasks section. Do not generate tasks until all decisions are confirmed.
+This keeps Refinement as the single engagement point: by the time Decomposition runs, *how* is already settled.
 
 ---
 
@@ -82,7 +67,7 @@ Present all decisions together in one message. Wait for the user to respond. Rec
 
 **Subagent — default for task list drafting.** Skip only for very small epics (<5 tasks). Role assignments and dependencies stay with the orchestrator — they need conversation context.
 
-- **Pass:** approved spec (`i1-spec.md`), confirmed design decisions, active role set (from `f2-architecture.md`), Task types + Documentation Policy below.
+- **Pass:** approved spec (`i1-spec.md`) including its Design Decisions, active role set (from `f2-architecture.md`), Task types + Documentation Policy below.
 - **Expect:** ordered draft list with proposed role + description + done condition per task. Orchestrator reviews roles, adjusts dependencies, writes tasks into `i2-plan.md`.
 
 **Output:**
@@ -93,7 +78,7 @@ Present all decisions together in one message. Wait for the user to respond. Rec
 
   ## Design Decisions
 
-  [one line per confirmed decision: topic → chosen approach]
+  [carried from i1-spec.md, plus any default recorded in Step 1; one line each: topic → chosen approach]
 
   ## Tasks
 

@@ -1,6 +1,6 @@
 # Integration & Demo Phase
 
-**Purpose:** Prove the verified code builds, starts, and behaves like a real application end-to-end. Tests are already written and run (in-process in [Development](development.md), out-of-process in [Verification](verification.md)). Integration does not re-run the suite — `i5-verify.md` is the test-outcome source of truth. This phase handles production-style build, env wiring, manual smoke, and demo readiness.
+**Purpose:** Prove the verified code builds, starts, and behaves like a real application end-to-end. Tests are already written and run (in-process in [Development](development.md), out-of-process in [Verification](verification.md)). Integration does not re-run the suite — `i3-outcome.md` is the test-outcome source of truth. This phase handles production-style build, env wiring, manual smoke, and demo readiness.
 
 ---
 
@@ -18,12 +18,14 @@
 
 2. **Build the application.** Production build command (`npm run build`, `mvn package`, `go build`, `docker compose build`). Build must succeed before continuing.
 
-3. **Prepare `.env`** before starting the app:
+3. **Prepare `.env`** before starting the app. Default to a **self-contained test configuration** — Integration must not hard-stop waiting for real third-party credentials. The mockable/needs-real-key status of each external was decided in Refinement's **Design Decisions** and recorded in `i1-spec.md`; read it, don't re-derive.
    - Exists: verify it covers all variables in `.env.example`. Add missing.
    - Does not exist: read `.env.example` and classify each variable:
      - *Safe test defaults* — ports, log levels, `NODE_ENV=development`, local service URLs (`DATABASE_URL=postgresql://localhost:5432/appdb_dev`, `REDIS_URL=redis://localhost:6379`), feature flags. Pre-fill.
-     - *Requires real value* — external API keys, OAuth secrets, payment tokens, third-party creds. Cannot be guessed.
-   - Generate `.env` with safe defaults. List variables needing real values; ask user. Do not start the app until every required var has a value.
+     - *External, mockable* — point at the mock/stub servers Verification already stands up (same contracts), or a local fake. Fill with the stub's URL/placeholder so the app exercises the mock path. **Do not block.**
+     - *External, needs a real key to be meaningful* — external API keys, OAuth secrets, payment tokens that cannot be mocked for the smoke.
+   - Generate `.env` with safe defaults + mock endpoints and start the app. Record in the Integration section which externals ran against mocks vs. real.
+   - **Real credentials are requested only when this checkpoint genuinely needs them:** a `/agile-dev:release` boundary, or `packaging = each` where the smoke must hit a real external that truly cannot be mocked. Only then, list the needed variables and ask once. Otherwise proceed on mocks — never block a normal iteration's Integration on a missing third-party secret.
    - Remind the user: local-testing only, never commit.
 
 4. **Start the application; verify service connections.**
@@ -53,17 +55,17 @@
    - If Architecture lists multiple target platforms and the stack supports cross-compile (Go, Rust, JVM via runtime-portability, Node via runtime-portability): produce one artifact per platform.
    - If Architecture lists multiple target platforms but the stack cannot cross-compile cleanly: produce the native-architecture artifact and add a `BUILDING-OTHER-PLATFORMS.md` note in `dist/<NNN>-<slug>/` explaining how to build the others.
    - **Smoke-test the packaged artifact** (target depth depends on `test_coverage` policy):
-     - `test_coverage = thorough` → re-run the full Verification suite (`i5-verify.md` scenarios) against the running packaged artifact. Slow but the strongest gate.
-     - `test_coverage = minimal` → pick one System-integration or E2E scenario from `i5-verify.md`, re-run it against the running packaged artifact.
+     - `test_coverage = thorough` → re-run the full Verification suite (`i3-outcome.md` scenarios) against the running packaged artifact. Slow but the strongest gate.
+     - `test_coverage = minimal` → pick one System-integration or E2E scenario from `i3-outcome.md`, re-run it against the running packaged artifact.
      - `test_coverage = none` → health check only: start the artifact (`docker run` / execute the binary / `java -jar`), confirm no crash within 10 seconds, send one minimal request if the app accepts one, kill it.
-   - **Hybrid mode (native GUI app)**: the binary was built inside the container but must run on the host. After Integration places it in `dist/<NNN>-<slug>/` (visible to host via the workspace bind mount), instruct the user to launch it on the host as the smoke step — Claude cannot drive a GUI on the host. Record the user's smoke result in `i6-int.md`.
-   - Record in `i6-int.md`:
+   - **Hybrid mode (native GUI app)**: the binary was built inside the container but must run on the host. After Integration places it in `dist/<NNN>-<slug>/` (visible to host via the workspace bind mount), instruct the user to launch it on the host as the smoke step — Claude cannot drive a GUI on the host. Record the user's smoke result in `i3-outcome.md`.
+   - Record in `i3-outcome.md`:
      - Artifact location(s) — relative paths under `dist/<NNN>-<slug>/`.
      - Architecture(s) covered + any platforms deferred.
      - Run instructions copied from `f2-architecture.md` (so users don't have to look them up).
      - External runtime requirements (e.g. "JVM 21+", "Docker", "none").
      - Smoke result (which scenarios ran, pass/fail).
-   - Skip this entire step when `policy.md` has `packaging: milestone` or `packaging: final` AND this iteration is not a release boundary. Note in `i6-int.md`: `Packaging skipped (policy: <value>). dist/ not produced this iteration.`
+   - Skip this entire step when `policy.md` has `packaging: milestone` or `packaging: final` AND this iteration is not a release boundary. Note in `i3-outcome.md`: `Packaging skipped (policy: <value>). dist/ not produced this iteration.`
 
 8. **Demo preparation.** If the epic produces a demonstrable user-visible state, prepare a short script covering the happy path. Early epics (project setup, CI, base schema) may not — note explicitly and confirm build/start still works.
 

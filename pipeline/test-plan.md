@@ -91,7 +91,7 @@ Assign **both** axes per scenario. The level decides which phase owns the test; 
 **Subagent — default for BDD scenario drafting.** Skip only for very small epics (<3 ACs). Level/type tagging stays with the orchestrator — the pyramid rule needs judgment.
 
 - **Pass:** approved spec (`i1-spec.md`) with ACs, writing guidelines from this file, BDD format spec. Tell it to produce ≥1 scenario per AC plus regression scenarios for behaviour this epic touches.
-- **Expect:** draft scenarios in BDD format, no level/type tags. Orchestrator assigns level (decision rule) and type (matching architecture interfaces), writes `i3-test-plan.md`.
+- **Expect:** draft scenarios in BDD format, no level/type tags. Orchestrator assigns level (decision rule) and type (matching architecture interfaces), writes `i2-plan.md`.
 
 **Output:**
 - Append a **Test Scenarios** section to `i2-plan.md`:
@@ -107,7 +107,7 @@ Assign **both** axes per scenario. The level decides which phase owns the test; 
 `test_coverage` axis:
 - `thorough` (default) — full behaviour above: ≥1 scenario per AC plus edge / failure / regression scenarios.
 - `minimal` — one happy-path scenario per AC; skip edge-case and failure-path scenarios unless an AC explicitly names one. No regression scenarios unless the touched code has no existing tests at all.
-- `none` — this phase is **skipped entirely** by the orchestrator; `i3-test-plan.md` is not produced. Iteration goes Decomposition → Development (no Test Plan, no Verification). DoD adapts accordingly (see definitions.md).
+- `none` — this phase is **skipped entirely** by the orchestrator; `i2-plan.md` is not produced. Iteration goes Decomposition → Development (no Test Plan, no Verification). DoD adapts accordingly (see definitions.md).
 
 `detail` axis (applies when `test_coverage` is `thorough` or `minimal`):
 - `full` — full BDD scenarios with Given / When / Then / And + Notes per scenario.

@@ -113,7 +113,7 @@ No per-epic checkpoint within Development — the bundle flows as one continuous
 - `minimal` — write in-process tests only for the happy-path Test Plan scenarios. Skip edge / failure / regression unless the AC explicitly names one.
 - `none` — write **no in-process tests**. Implementation only. The self-review checklist's "tests cover ACs" item becomes "self-review confirms behaviour matches ACs (no tests, per policy)". Skip the TDD red-green-refactor loop.
 
-`detail` axis (applies to `i4-dev.md` summary):
+`detail` axis (applies to `i3-outcome.md` summary):
 - `full` — every section from Output above with rationale per decision and full deviation explanations.
 - `sparse` — files-changed list, tests-by-level totals (not per-AC), decisions as one-liners, deviations as one-liners.
 - `minimal` — files-changed list and tests-by-level totals only. No decisions section, no deviations section.

@@ -165,54 +165,16 @@ Notes:
 
 ---
 
-## Step 4.5 — Generate project `.claude/settings.json`
+## Step 4.5 — Permissions are handled by the plugin (no project allowlist needed)
 
-Generate `.claude/settings.json` at the project root. This file is loaded by Claude Code for every session in this project (inside or outside plugin commands), pre-approving the stack's development tool commands so Claude never prompts for routine builds, tests, or linting.
+The plugin ships PreToolUse hooks (`hooks/permission-gate.sh`, `hooks/write-guard.sh`) that run in every session where agile-dev is enabled. They auto-approve recognised dev tools (build / test / lint / format runners, local git, in-project writes) with no prompt, block dangerous commands (`sudo`, `rm -rf /`, global installs, `git push --force`), and require manual handling for credential/secret files. So **do not generate a project `.claude/settings.json` allowlist** — it would duplicate the hook and add maintenance.
 
-Always include the base set:
+Just make sure `.gitignore` ignores build output:
+- Add `dist/` to `.gitignore` if not already present.
 
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(git *)",
-      "Bash(ls *)", "Bash(find *)", "Bash(grep *)", "Bash(cat *)",
-      "Bash(head *)", "Bash(tail *)", "Bash(echo *)", "Bash(printf *)",
-      "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(rm *)",
-      "Bash(chmod *)", "Bash(touch *)", "Bash(env)", "Bash(which *)",
-      "Bash(curl *)", "Bash(wget *)", "Bash(pwd)", "Bash(wc *)",
-      "Bash(sort *)", "Bash(uniq *)", "Bash(awk *)", "Bash(sed *)",
-      "Bash(jq *)", "Bash(diff *)", "Bash(zip *)", "Bash(tar *)"
-    ]
-  }
-}
-```
-
-Add stack-specific entries on top of the base set:
-
-| Stack | Additional `allow` entries |
-|---|---|
-| Rust | `"Bash(cargo *)"`, `"Bash(rustc *)"`, `"Bash(rustup *)"` |
-| Node.js / npm | `"Bash(npm *)"`, `"Bash(npx *)"`, `"Bash(node *)"` |
-| Node.js / yarn | `"Bash(yarn *)"` |
-| Node.js / pnpm | `"Bash(pnpm *)"` |
-| TypeScript | `"Bash(tsc *)"` |
-| Python | `"Bash(python3 *)"`, `"Bash(python *)"`, `"Bash(pip3 *)"`, `"Bash(pip *)"`, `"Bash(pytest *)"`, `"Bash(uv *)"` |
-| Go | `"Bash(go *)"` |
-| Java | `"Bash(java *)"`, `"Bash(javac *)"` |
-| Maven | `"Bash(mvn *)"`, `"Bash(./mvnw *)"` |
-| Gradle | `"Bash(gradle *)"`, `"Bash(./gradlew *)"` |
-| .NET / C# | `"Bash(dotnet *)"` |
-| Ruby | `"Bash(ruby *)"`, `"Bash(bundle *)"`, `"Bash(rake *)"`, `"Bash(rspec *)"` |
-| Docker | `"Bash(docker *)"`, `"Bash(docker-compose *)"` |
-| Make | `"Bash(make *)"` |
-
-Add `dist/` and `.claude/` to `.gitignore` if not already present (`.claude/settings.json` is project-specific tooling config, not app source).
-
-**On-the-fly expansion** — if during any iteration phase Claude needs to run a command not covered by the above entries (e.g. a newly installed tool, a language-specific linter added mid-project), it should:
-1. Detect the tool name from the command (e.g. `cargo-deny`, `golangci-lint`, `hadolint`).
-2. Offer: `Add Bash(<tool> *) to .claude/settings.json so future runs don't prompt? (yes/no)`.
-3. If yes: edit `.claude/settings.json` to append the entry, then run the command. Do not ask the user to approve the command separately — adding it to settings.json IS the approval.
+**Two edge cases worth a one-line note to the user:**
+- If a project uses an unusual dev tool the hook doesn't recognise, Claude will get a single normal permission prompt the first time — harmless. A permanent fix is adding the tool to the plugin's `hooks/guards.json` allow list.
+- For a **team** that clones this repo and works in it *without* the agile-dev plugin installed, the hook won't run for them. If that applies, generate a project `.claude/settings.json` with the stack's tool allowlist so collaborators aren't prompted. Default to **not** generating it for solo projects.
 
 ---
 
@@ -244,4 +206,11 @@ After reopening, verify the plugin is installed: `/plugin list` should show `agi
 
 **If hybrid mode (native GUI):** build and test inside the container; run the application on the host for demo and smoke testing.
 
-**⛳ CHECKPOINT Environment:** User reviews build recipe and confirms the environment setup looks correct. Mark `Environment ✓` in `state.md`. Then say: "Environment ready. Run `/agile-dev:iterate` to start the first iteration."
+**Environment confirmation — conditional on `autonomy` policy:**
+
+The environment output is mechanical (it's derived from the approved Architecture), so it does not need a mandatory approval gate by default.
+
+- `user-driven` → **⛳ CHECKPOINT Environment:** present the build recipe and wait for explicit approval before marking complete.
+- `semi-automatic` (default) / `ai-driven` → **notify, don't block.** Print a one-line summary of what was generated (build recipe, any Testcontainers/compose config, dev container if chosen), mark `Environment ✓` in `state.md`, and continue. The user can review the committed recipe files at any time. **Exception:** if a dev container was generated (the user must reopen in it) or real input is required (e.g. an editor action), pause regardless of autonomy — that's a hard handoff, not an approval.
+
+After confirming/notifying, say: "Environment ready. Run `/agile-dev:iterate` to start the first iteration."

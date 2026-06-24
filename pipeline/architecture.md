@@ -22,7 +22,7 @@
 - **Deliverable artifact:** what end users actually get to run. Decide here so Environment can generate the right production build recipe and Integration knows what to produce. Capture:
   - **Type:** one of — `native-binary` (e.g. Go / Rust statically-linked), `jar` / `war` (JVM), `npm-bundle` (Node.js distributable), `docker-image` (containerised app), `tarball` (archive of a directory), `platform-installer` (.dmg / .msi / .deb / .rpm / .exe), `script` (a bash/python script with its dependencies).
   - **Target platforms:** the OS+arch pairs the artifact must run on, e.g. `linux-x86_64`, `linux-arm64`, `darwin-arm64`, `windows-x86_64`. If multiple are required and the language doesn't cross-compile cleanly, plan accordingly (Architecture flags it; Environment generates platform-specific build commands; Integration may build per-platform).
-  - **Run instructions:** the one-line invocation a user runs after copying the artifact to a machine, e.g. `./myapp --port 8080`, `java -jar myapp.jar`, `docker load < image.tar.gz && docker run myapp:latest`. This is what gets embedded in `i6-int.md` and `releases/v<version>.md`.
+  - **Run instructions:** the one-line invocation a user runs after copying the artifact to a machine, e.g. `./myapp --port 8080`, `java -jar myapp.jar`, `docker load < image.tar.gz && docker run myapp:latest`. This is what gets embedded in `i3-outcome.md` and `releases/v<version>.md`.
   - **External runtime requirements:** anything the user must have installed on the target machine besides the artifact, e.g. "JVM 21+", "Docker", "none — statically linked".
 
 **Example questions to draw from — adapt to the conversation, do not run as a script:**
