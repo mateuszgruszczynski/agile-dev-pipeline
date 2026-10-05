@@ -66,6 +66,8 @@ For GitHub specifically: search for repositories by topic (`github.com/topics/<t
 
 Skip sources that clearly duplicate something already found. Stop when you have enough evidence to write a confident finding — exhaustive coverage is not the goal.
 
+**When the source or approach itself is unresolved.** Some research questions aren't "is this known dependency accessible" — they're "which of several real options should this depend on" (which site to scrape, which API to integrate, which dataset or library to use). Don't stop at the first candidate that looks workable: identify 2–4 real candidates and carry all of them into Step 4. Point-based research — going deep on the first plausible option and stopping there — is the most common cause of discovering, several iterations in, that the chosen source doesn't actually have what the app needs. Keep candidates alive until Step 5 narrows them with evidence, not before.
+
 ---
 
 ## Step 4 — Probe scripts
@@ -90,6 +92,8 @@ When web research alone cannot answer a question — because you need to see wha
 - No error suppression — let failures surface clearly; a 403, 402, or empty result is itself an answer
 - Print structured output: dump JSON, print field names, show sample records, report counts, **print HTTP status and any error/quota body verbatim**
 - Do not write production-quality code — these are throwaway probes; just make them work
+
+**Comparing multiple candidates (see Step 3).** When the source or approach itself was unresolved, probe **every** surviving candidate for the same literal fields/capability the app needs — not just the one that looked best in docs. A candidate that reads worse on paper can turn out to have the exact field a seemingly-better one lacks; that's only visible once both have actually been queried.
 
 Run each script immediately after writing it. Use the output as evidence in Step 5.
 
@@ -129,7 +133,9 @@ One of:
 One section per research question. For each: what was found (with provenance tags), what it means for the project, and concrete evidence — API response fields, status codes seen, data-source URLs, library names/versions, cost figures, TOS constraints. Where a probe ran, cite the script and the actual output, not the doc.
 
 ### Recommended approach
-The preferred technical direction in 3–5 sentences: language, key libraries or external services, architecture sketch, main integration points. State plainly which parts rest on `[verified]` evidence and which rest on `[claimed]`/`[assumption]` — the user is choosing a direction, and they need to know which load-bearing pieces are still unconfirmed. If a meaningful alternative exists, name it and why it was not recommended.
+When the source/approach was already determined (not itself a research question): state the preferred technical direction in 3–5 sentences — language, key libraries or external services, architecture sketch, main integration points. State plainly which parts rest on `[verified]` evidence and which rest on `[claimed]`/`[assumption]` — the user is choosing a direction, and they need to know which load-bearing pieces are still unconfirmed. If a meaningful alternative exists, name it and why it was not recommended.
+
+When the source/approach was itself an open question (Step 3's multi-candidate case) and more than one candidate survived probing as viable: do not narrate one winner in prose. Add a **Candidate comparison** table instead — one row per candidate probed, columns for the literal capability/fields the app needs (each cell tagged `[verified]` / `[claimed]` / `[assumption]`), cost/access tier, and a one-line verdict — then frame the choice as **Option A / B / C / D** (same pattern as `refinement.md`'s design decisions) for the user to decide at the checkpoint, instead of silently picking one. Only collapse to a single prose recommendation when exactly one candidate survived probing, or the source was never in question to begin with.
 
 ### Key assumptions (register)
 A flat list of every `[assumption]` and load-bearing `[claimed]` item the recommendation depends on — about the world (API behaviour, cost, data quality, legal) **and** about intent (what "the app" is supposed to do where the brief was vague). Each line: the assumption, why it matters if wrong, and how to confirm it. This register is carried into `start.md` and surfaced for confirmation — it is the antidote to "decisions made automatically on research that turned out wrong."
@@ -156,6 +162,7 @@ Specific things that must be true before `/agile-dev:start` proceeds. Includes *
 1. Read out the **MUST-VERIFY access/cost items** one by one. For each, ask the user to either confirm from their own knowledge ("yes, I have the paid tier" / "no, that function is enterprise-only") or accept it as an open pre-condition to verify before building. Update each item's status from their answer.
 2. Read out the **Key assumptions register**, especially any `[assumption]` about *what the app is meant to do*. Correct the user's intent here, now — this is where a vague brief gets misread.
 3. Restate the **Feasibility verdict** after their answers (it may move from Yellow toward Green as items resolve, or to Red if something they know rules it out).
+4. If **Recommended approach** contains a **Candidate comparison** (multiple viable sources/approaches survived probing), present the Option A/B/C/D choice now and ask the user to pick — do not pick for them. Record the chosen option in `findings.md` under Recommended approach before moving on.
 
 Then wait for approval.
 

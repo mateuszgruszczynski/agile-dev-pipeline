@@ -53,11 +53,11 @@ You:    /agile-dev:iterate
 Claude: [picks the first epic, runs Refinement → Decomposition + Plan → Development → Verification → Integration]
 ```
 
-Claude stops for your approval where it matters most — the **Refinement** checkpoint, where the spec, acceptance criteria, and design decisions are settled together. After that, the iteration runs to a verified, demoable result without further prompts (under the default autonomy). Permissions for routine dev tools are auto-approved by the plugin's hooks, so you're not asked to approve every build or test command.
+Claude stops for your approval where it matters most — the **Refinement** checkpoint, where the spec, acceptance criteria, and design decisions are settled together. After that, the iteration runs to a verified, demoable result without further prompts (under the default autonomy). Permissions for routine dev tools are auto-approved by the plugin's hooks, so you're not asked to approve every build or test command. On Claude Code v2.1.287+, a bundled mod reinforces this under auto mode's classifier as well as the older prompt-based flow; on earlier versions the same approvals still work, just via the shell-script hook alone.
 
-### Pipeline policy — three knobs you set once per project
+### Pipeline policy — knobs you set once per project
 
-Before any phase runs, you choose three things that control how the pipeline behaves for this project. Stored in `.project-artifacts/policy.md` — editable by hand at any time.
+Before any phase runs, you choose a handful of things that control how the pipeline behaves for this project. Stored in `.project-artifacts/policy.md` — editable by hand at any time.
 
 | Knob | Options | What it controls |
 |---|---|---|
@@ -66,6 +66,7 @@ Before any phase runs, you choose three things that control how the pipeline beh
 | **test_coverage** | `thorough` (default) / `minimal` / `none` | How much testing the pipeline produces. `thorough` = full pyramid. `minimal` = one happy-path scenario per AC. `none` = skips Test Plan + Verification entirely; manual smoke is the only gate. For prototypes. |
 | **packaging** | `each` (default) / `milestone` / `final` | When a runnable artifact (binary / jar / docker image / etc.) gets produced. `each` = every iteration writes one to `dist/<NNN>-<slug>/`. `milestone` = only at `/agile-dev:release` boundaries. `final` = only on explicit user request. Architecture decides *what* the artifact is and which platforms it targets; Environment generates the build recipe; Integration runs it and smoke-tests the result. |
 | **iteration_size** | `xs` / `s` / `m` / `l` / `xl` (default) / `xxl` | How much work goes into one iteration. T-shirt sizes have point values (XS=1, S=1.7, M=3, L=5.2, XL=9, XXL=15.6, scaling as √3). The iteration bundler picks a set of TODO epics from the backlog summing closest to this budget, respecting priority order and dependencies. Default `xl` = 9 points ≈ one XL epic, two L epics, three M epics, or any equivalent combination. Larger = fewer checkpoints per real-world unit of work. |
+| **requirement_rigor** | `auto` (default) / `always` / `never` | Whether Vision's deep-requirements playback (worked examples, explicit non-goals, confirmed assumptions register) runs automatically, always, or never. `auto` turns it on when research findings exist, the app depends on external data/APIs, or the idea stays abstract — a judgment call made mid-conversation. `always` forces it on regardless of how concrete the idea sounds. `never` skips it even when the auto-trigger would fire; it does not affect the separate MUST-VERIFY research gate, which still blocks on unresolved access/cost items regardless. |
 
 The defaults match the pipeline's original behaviour, so existing projects don't change. You're asked once during `/agile-dev:start` / `/agile-dev:improve` / `/agile-dev:change`. Combining `ai-driven` with `none` triggers an extra confirmation since it removes both human and automated gates — only appropriate for throwaway code.
 

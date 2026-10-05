@@ -68,7 +68,7 @@ Check `.project-artifacts/changes/*/change-state.md` for `status: IN_PROGRESS`.
 
 ## Step 4 — Standalone: policy
 
-Read `.project-artifacts/policy.md`. If missing, ask the user to configure five knobs (same as `/agile-dev:start` Step 0). Idempotent — no-ops if the file exists.
+Read `.project-artifacts/policy.md`. If missing, ask the user to configure the policy knobs (same as `/agile-dev:start` Step 0 — see that step for the current list). Idempotent — no-ops if the file exists.
 
 ---
 

@@ -38,6 +38,8 @@ Points scale as `sqrt(3)^n` so each step is ~1.73× the previous — closer than
 - Avoid mixing unrelated concerns in one epic
 - Each epic detail block must satisfy the **Definition of Ready** in [definitions.md](definitions.md) before it can enter Refinement
 
+**Risk-first sequencing.** Check whether this project ran in deep-requirements mode: `f1-vision.md` has a "Concrete interpretation" / "Confirmed assumptions" section, or `.project-artifacts/research/findings.md` exists with an `[assumption]`/`[claimed]` item accepted as an open risk rather than fully resolved. If so, check whether any backlog epic's job is specifically to prove or disprove that risk — often a small epic such as "confirm candidate data source has the required fields" or "prototype the riskiest integration." If such an epic exists, assign it **P1** regardless of its stand-alone user-facing value, and say why in its description (e.g. "P1 — the rest of the backlog assumes this works; proving it in iteration 1 is cheaper than discovering it's wrong after several iterations of investment"). This is not a special case of P1 — an unresolved foundational risk is itself an MVP blocker, even before it has any user-facing value of its own. The iteration bundler ([iterate.md](../commands/iterate.md) Step 2) already sorts P1 first, so no change is needed there — this only changes which epic earns the P1. Skip this entirely when deep-requirements mode never triggered for this project; ordinary value-based priority is already risk-appropriate there.
+
 **Use subagents:** for long backlogs (10+ epics), delegate per-epic detail-block generation to a subagent and review the set yourself before presenting. Keep the priority/sizing decisions with you — those need user judgment.
 
 **Output:**

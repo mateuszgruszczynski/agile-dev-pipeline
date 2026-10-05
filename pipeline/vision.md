@@ -29,7 +29,7 @@ The list below is a non-exhaustive starter set. Pick the ones that close real ga
 - "What's the one thing users absolutely must be able to do on day one?"
 - "What does a successful interaction look like from the user's perspective?"
 
-**Concrete interpretation playback — required in deep-requirements mode** (see [start.md](../commands/start.md); on when research findings exist, the app is external-data/API dependent, or the idea is still abstract after the opening exchange):
+**Concrete interpretation playback — required in deep-requirements mode** (whether deep-requirements mode is on is decided in [start.md](../commands/start.md) Step 1, from the `requirement_rigor` policy knob: `always` forces it on, `never` forces it off, and `auto` — the default — turns it on when research findings exist, the app is external-data/API dependent, or the idea is still abstract after the opening exchange):
 
 A high-level idea is the single biggest source of silent misinterpretation — you (and the subagents you delegate to) fill the gaps, and the mismatch only surfaces in the finished, wrong app. Close that gap *here*, before any drafting:
 

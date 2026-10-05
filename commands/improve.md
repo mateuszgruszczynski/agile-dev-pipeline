@@ -18,13 +18,13 @@ Each phase definition lives in its own file under `${CLAUDE_PLUGIN_ROOT}/pipelin
 
 ## Step 0 — Pipeline policy (one-time per project)
 
-Configure three policy knobs for this project: autonomy, detail, test_coverage. Stored at `.project-artifacts/policy.md`. Idempotent — silently no-ops once the file exists.
+Configure the policy knobs for this project: autonomy, detail, test_coverage, packaging, iteration_size, requirement_rigor. Stored at `.project-artifacts/policy.md`. Idempotent — silently no-ops once the file exists.
 
 1. Check `.project-artifacts/policy.md`:
-   - **Exists:** print `Policy: <autonomy> / <detail> / <test_coverage>. Edit .project-artifacts/policy.md to change.` Skip the rest of Step 0.5.
+   - **Exists:** print `Policy: <autonomy> / <detail> / <test_coverage> / <packaging> / iteration ~<iteration_size> / requirement_rigor=<requirement_rigor>. Edit .project-artifacts/policy.md to change.` If `requirement_rigor` is absent (policy.md predates this knob), treat it as `auto` and print `requirement_rigor=auto (default)`. Skip the rest of Step 0.5.
    - **Missing:** continue to step 2.
 
-2. Show the three knobs with recommended defaults; ask the user to pick:
+2. Show the knobs with recommended defaults; ask the user to pick:
 
    > **Autonomy** — how often the pipeline pauses for your approval:
    > - `user-driven` — every ⛳ checkpoint pauses.
@@ -47,7 +47,12 @@ Configure three policy knobs for this project: autonomy, detail, test_coverage. 
    > **Iteration size** — work-per-iteration target (t-shirt sizes; XS=1, S=1.7, M=3, L=5.2, XL=9, XXL=15.6):
    > - `xs`, `s`, `m`, `l`, `xl` (recommended default), `xxl`.
    >
-   > Reply with five values (e.g. `semi-automatic full thorough each xl`) or press Enter for the recommended defaults.
+   > **Requirement rigor** — should Vision's deep-requirements playback run automatically, always, or never:
+   > - `auto` (recommended default) — turns on when research findings exist, the app depends on external data/APIs, or the idea stays abstract. Skipped for small, clearly-specified apps.
+   > - `always` — force it on regardless of how the idea reads.
+   > - `never` — skip it even if the auto-trigger would fire. Does not affect the separate MUST-VERIFY research gate.
+   >
+   > Reply with six values (e.g. `semi-automatic full thorough each xl auto`) or press Enter for the recommended defaults.
 
 3. Parse + validate. Repeat with error on invalid values.
 
@@ -65,12 +70,13 @@ Configure three policy knobs for this project: autonomy, detail, test_coverage. 
    test_coverage: <chosen>
    packaging: <chosen>
    iteration_size: <chosen>
+   requirement_rigor: <chosen>
 
    ## Notes
    <empty>
    ```
 
-6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging> / iteration ~<iteration_size>.`
+6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging> / iteration ~<iteration_size> / requirement_rigor=<chosen>.`
 
 ---
 
@@ -163,7 +169,7 @@ Produce the Analysis output as defined in `analysis.md` and save to `.project-ar
 
 After Analysis is approved, run Vision → Architecture → Backlog. For each phase: load its file from the table above, follow the phase definition, and apply these delta-mode rules throughout:
 
-- **Vision** (`vision.md`) — describe the desired end state. Use Analysis output to frame what is missing or needs to change. Do not re-describe what already works correctly. **Set requirement rigor (risk-scaled):** turn on deep-requirements mode (the concrete interpretation playback in `vision.md`) when the improvement is vaguely specified or depends on external data / APIs the codebase doesn't already use — the existing code grounds *what is*, not *what you intend to add*. Skip it for a precise, self-contained change.
+- **Vision** (`vision.md`) — describe the desired end state. Use Analysis output to frame what is missing or needs to change. Do not re-describe what already works correctly. **Set requirement rigor:** read `requirement_rigor` from `.project-artifacts/policy.md`. `always` turns on deep-requirements mode (the concrete interpretation playback in `vision.md`) unconditionally; `never` leaves it off regardless of the triggers below; `auto` (default) turns it on when the improvement is vaguely specified or depends on external data / APIs the codebase doesn't already use — the existing code grounds *what is*, not *what you intend to add*. `auto` skips it for a precise, self-contained change.
 - **Architecture** (`architecture.md`) — start from the C4 diagrams in Analysis. Describe only the changes: what to add, remove, or restructure. Flag any breaking changes to existing interfaces.
 - **Backlog** (`backlog.md`) — seed epics from the gap between Analysis and Vision. Include REFACTOR, FIX, and MIGRATION epic types alongside FEATURE. Tech debt from Analysis becomes explicit epics with priority, not hidden scope.
 
@@ -194,7 +200,7 @@ Do **not** run iteration phases in this session. Each phase runs in its own sess
 ```
 .project-artifacts/
   state.md                            ← pipeline position, backlog, and per-iteration history
-  policy.md                           ← pipeline policy: autonomy / detail / test_coverage (set once at Step 0.5)
+  policy.md                           ← pipeline policy knobs (set once at Step 0 — see Step 0 for the current list)
   pipeline-feedback.md                ← append-only meta-feedback about the agile-dev pipeline itself (created on first entry)
   ana-analysis.md                     ← Analysis output (improve mode only)
   f1-vision.md

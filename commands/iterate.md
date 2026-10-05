@@ -4,6 +4,8 @@ description: Run iteration phases continuously through Refinement / Decompositio
 
 Iteration phase runner. Runs the iteration loop forward through every phase until it hits a ⛳ CHECKPOINT or backlog exhaustion. State is saved to `state.md` after each approval; closing the session at any point is a safe pause.
 
+**Checkpoint footer.** Every ⛳ CHECKPOINT presentation in this command — Environment, Refinement, Decomposition + Plan, Integration — ends with one compact progress line, computed from `state.md`: `Progress: Iteration <iteration> · <current_epic> · <X>/<Y> epics done`, where `<X>/<Y>` counts `DONE` epics against all epics in the Backlog table. This is the only status output at checkpoint time — do not print the full `/agile-dev:status` report here.
+
 ---
 
 ## Step 1 — Validate state

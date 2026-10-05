@@ -17,13 +17,13 @@ Each phase definition lives in its own file under `${CLAUDE_PLUGIN_ROOT}/pipelin
 
 ## Step 0 — Pipeline policy (one-time per project)
 
-Configure three policy knobs for this project: autonomy (how often we pause for approval), detail (how verbose artifacts are), and test_coverage (how much testing to produce). Stored at `.project-artifacts/policy.md`. Idempotent — silently no-ops once the file exists.
+Configure the policy knobs for this project — autonomy (how often we pause for approval), detail (how verbose artifacts are), test_coverage (how much testing to produce), packaging (when a runnable artifact is produced), iteration_size (how much work per iteration), and requirement_rigor (whether Vision's deep-requirements playback is automatic, forced on, or forced off). Stored at `.project-artifacts/policy.md`. Idempotent — silently no-ops once the file exists.
 
 1. Check `.project-artifacts/policy.md`:
-   - **Exists:** print one-line summary `Policy: <autonomy> / <detail> / <test_coverage>. Edit .project-artifacts/policy.md to change.` Skip the rest of Step 0.5.
+   - **Exists:** print one-line summary `Policy: <autonomy> / <detail> / <test_coverage> / <packaging> / iteration ~<iteration_size> / requirement_rigor=<requirement_rigor>. Edit .project-artifacts/policy.md to change.` If `requirement_rigor` is absent (policy.md predates this knob), treat it as `auto` and print `requirement_rigor=auto (default)`. Skip the rest of Step 0.5.
    - **Missing:** continue to step 2.
 
-2. Show the three knobs with recommended defaults; ask the user to pick:
+2. Show the knobs with recommended defaults; ask the user to pick:
 
    > **Autonomy** — how often does the pipeline pause for your approval?
    > - `user-driven` — every ⛳ checkpoint pauses; explicit approval for everything.
@@ -49,7 +49,12 @@ Configure three policy knobs for this project: autonomy (how often we pause for 
    > - `xs` (1 pt), `s` (1.7), `m` (3), `l` (5.2), `xl` (9, recommended default), `xxl` (15.6).
    > - Larger = fewer checkpoints, more work per pause. Smaller = tighter feedback loops, more interruptions.
    >
-   > Reply with five values (e.g. `semi-automatic full thorough each xl`) or press Enter for the recommended defaults.
+   > **Requirement rigor** — should Vision's deep-requirements playback (worked examples, explicit non-goals, confirmed assumptions register) run automatically, always, or never?
+   > - `auto` (recommended default) — turns on when research findings exist, the app depends on external data/APIs, or the idea stays abstract after the opening exchange. Skipped for small, clearly-specified apps. This is a judgment call Claude makes mid-conversation — it can miss a project that reads as concrete but hides ambiguous domain logic.
+   > - `always` — force the playback on for every project, even ones that look simple. Use when you want the rigor regardless of how concrete the idea sounds, instead of relying on the auto-trigger's read of the conversation.
+   > - `never` — skip it even when the auto-trigger would fire. Does **not** affect the separate MUST-VERIFY research gate (`commands/research.md`), which still blocks on unresolved access/cost items regardless of this setting.
+   >
+   > Reply with six values (e.g. `semi-automatic full thorough each xl auto`) or press Enter for the recommended defaults.
 
 3. Parse the response. Validate each value against its allowed set. If invalid, repeat the prompt with the error.
 
@@ -69,12 +74,13 @@ Configure three policy knobs for this project: autonomy (how often we pause for 
    test_coverage: <chosen>
    packaging: <chosen>
    iteration_size: <chosen>
+   requirement_rigor: <chosen>
 
    ## Notes
    <empty — add reasons or context here, or change values directly above>
    ```
 
-6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging> / iteration ~<iteration_size>. Stored in .project-artifacts/policy.md (edit by hand to change later).`
+6. Confirm: `Policy set: <autonomy> / <detail> / <test_coverage> / <packaging> / iteration ~<iteration_size> / requirement_rigor=<chosen>. Stored in .project-artifacts/policy.md (edit by hand to change later).`
 
 ---
 
@@ -114,7 +120,12 @@ Read `.project-artifacts/state.md` (if present) and check for foundation artifac
   - `[verified]` items may be used as established context. `[claimed]`/`[assumption]` items must be confirmed during Vision before anything depends on them.
 - If the user provided an initial idea via `$ARGUMENTS`, use it as the seed for Vision.
 - If no arguments and no research findings, ask the user to describe what they want to build in one or two sentences.
-- **Set requirement rigor (risk-scaled).** Turn on **deep-requirements mode** for Vision when any of these holds: research findings exist; the app depends on external data / APIs / scraping; or after the opening exchange the purpose is still abstract or you find yourself making material interpretation choices. In deep mode, Vision runs the concrete interpretation playback and confirms the assumptions register (see [vision.md](../pipeline/vision.md)). For a small, self-contained, clearly-specified app, skip it — don't manufacture ceremony.
+- **Set requirement rigor.** Read `requirement_rigor` from `.project-artifacts/policy.md`:
+  - `always` → turn on **deep-requirements mode** for Vision unconditionally. Skip the trigger check below.
+  - `never` → leave deep-requirements mode off, even if the triggers below would otherwise fire. This does not affect the separate MUST-VERIFY research gate above, which still blocks regardless.
+  - `auto` (default, or if `policy.md` predates this knob) → risk-scaled: turn on deep-requirements mode when any of these holds: research findings exist; the app depends on external data / APIs / scraping; or after the opening exchange the purpose is still abstract or you find yourself making material interpretation choices. For a small, self-contained, clearly-specified app, skip it — don't manufacture ceremony.
+
+  In deep mode (however it was turned on), Vision runs the concrete interpretation playback and confirms the assumptions register (see [vision.md](../pipeline/vision.md)).
 
 **Case 2 — Orphaned artifacts** (no `state.md` but foundation artifacts exist): ambiguous origin. Stop and ask:
 
@@ -170,7 +181,7 @@ All outputs are persisted as markdown files so the pipeline survives session res
 ```
 .project-artifacts/
   state.md                            ← pipeline position, backlog, and per-iteration history
-  policy.md                           ← pipeline policy: autonomy / detail / test_coverage (set once at Step 0.5)
+  policy.md                           ← pipeline policy knobs (set once at Step 0 — see Step 0 for the current list)
   pipeline-feedback.md                ← append-only meta-feedback about the agile-dev pipeline itself (created on first entry)
   research/                           ← optional: created by /agile-dev:research before the pipeline starts
     findings.md                       ← feasibility verdict, recommended approach, data sources, open questions
