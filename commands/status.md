@@ -4,6 +4,8 @@ description: Report current agile-dev pipeline status (current phase, epic, back
 
 Read `.project-artifacts/state.md`, then report the current pipeline state in a concise summary. Do not read any pipeline phase files — all information needed is in `state.md`.
 
+**Communication style.** Enumerate, don't narrate — the format below already is the point; don't add narrative framing around it.
+
 If `.project-artifacts/state.md` does not exist, report: "No pipeline started yet. Run `/agile-dev:start <your idea>` (greenfield) or `/agile-dev:improve <goal>` (existing codebase) to begin." and stop.
 
 ---

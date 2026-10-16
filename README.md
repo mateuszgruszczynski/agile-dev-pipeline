@@ -24,6 +24,8 @@ All outputs (vision, architecture, backlog, specs, test scenarios, iteration out
 
 Modes `start` and `improve` share the same iteration loop once the foundation is established. Mode `change` is a lightweight path for one-off work.
 
+Closed a session and not sure what to type next? Run `/agile-dev:resume` — it takes no arguments, reads where the project actually left off (Foundation, iteration, or a paused standalone change), and continues from there. It's a pure dispatcher to whichever of the above already owns that state, so it's always safe to run and never starts anything new.
+
 ### What a session looks like
 
 ```
@@ -55,6 +57,8 @@ Claude: [picks the first epic, runs Refinement → Decomposition + Plan → Deve
 
 Claude stops for your approval where it matters most — the **Refinement** checkpoint, where the spec, acceptance criteria, and design decisions are settled together. After that, the iteration runs to a verified, demoable result without further prompts (under the default autonomy). Permissions for routine dev tools are auto-approved by the plugin's hooks, so you're not asked to approve every build or test command. On Claude Code v2.1.287+, a bundled mod reinforces this under auto mode's classifier as well as the older prompt-based flow; on earlier versions the same approvals still work, just via the shell-script hook alone.
 
+The transcript above shows "Reply APPROVE" for simplicity, but every checkpoint actually presents **Approve** / **Request changes** as clickable options (via Claude Code's `AskUserQuestion` tool), with a free-text option for describing exactly what to change — typing APPROVE still works too, and is the automatic fallback if clickable options aren't available in your session.
+
 ### Pipeline policy — knobs you set once per project
 
 Before any phase runs, you choose a handful of things that control how the pipeline behaves for this project. Stored in `.project-artifacts/policy.md` — editable by hand at any time.
@@ -82,9 +86,9 @@ Vision → Architecture → Backlog            Refinement → Decomposition + Pl
                                               (continue, stop, or release)
 ```
 
-**Foundation** sets up the project once: what to build, how to build it, the list of epics, and a reproducible dev environment.
+**Foundation** sets up the project once: what to build, how to build it, the list of epics, and a reproducible dev environment. Each phase stops at a ⛳ checkpoint too — closing the session after approving one (e.g. after Vision, before Architecture) is just as safe a pause as between iterations. Re-run `/agile-dev:start` (or `/agile-dev:improve`), or just run `/agile-dev:resume`, in the new session and it resumes from the next phase; it does not redo anything already approved.
 
-**Iteration** runs through every epic in the backlog. Each iteration produces a spec, a test plan, code, automated tests, and a verified, demoable result. The loop flows forward continuously and only stops at ⛳ approval checkpoints. Closing the Claude session at any approval is a safe pause — the next command picks up where you left.
+**Iteration** runs through every epic in the backlog. Each iteration produces a spec, a test plan, code, automated tests, and a verified, demoable result. The loop flows forward continuously and only stops at ⛳ approval checkpoints. Closing the Claude session at any approval is a safe pause — `/agile-dev:resume` (or the command that got you here) picks up where you left.
 
 ### Foundation phases
 
@@ -119,7 +123,7 @@ Design and behaviour are settled together at the **Refinement** checkpoint, so t
 
 ## Prerequisites
 
-1. **Claude Code** installed and set up. If you haven't done this yet, follow the official guide: https://docs.anthropic.com/claude-code
+1. **Claude Code** installed and set up. If you haven't done this yet, follow the official guide: https://platform.claude.com/docs/claude-code
 2. A Claude Code account with an active session.
 3. **Git** installed and your project initialised as a git repo. The pipeline relies on git for commits, history, and recovery flows. If your directory isn't a repo yet, `/agile-dev:start` will offer to `git init` for you.
 4. **Docker** — *optional*, only needed if your stack requires it: containerised deliverables, Testcontainers / docker-compose for out-of-process tests, or an opt-in dev container. For most projects on common stacks (modern Node, Go, Rust, Python, Java), the host toolchain is enough and no container is generated.
@@ -153,6 +157,7 @@ That's it. The commands are now available in every Claude Code session:
 - `/agile-dev:improve`
 - `/agile-dev:change`
 - `/agile-dev:iterate`
+- `/agile-dev:resume` — continue from wherever the project actually left off, without knowing which command that is
 - `/agile-dev:status`
 - `/agile-dev:release` — bundle iterations into a versioned release (MVP-first)
 - `/agile-dev:revise` — revise a foundation phase (Vision / Architecture / Backlog) when an iteration surfaces the need
@@ -173,19 +178,11 @@ Updates handle file removals cleanly — orphaned files from older versions are 
 /plugin uninstall agile-dev
 ```
 
-### After install — a one-time permission rule
+### After install — no extra permission setup needed
 
-Claude Code does not currently let a plugin pre-authorise reads of its own files via the shipped `settings.json`. Without a rule, you would be prompted to approve every read of the pipeline's definition files (`pipeline/vision.md`, `pipeline/architecture.md`, …).
+Nothing to configure. The plugin ships its own PreToolUse hooks (`hooks/permission-gate.sh`, `hooks/write-guard.sh`) that auto-approve recognised dev tools and in-project writes with no prompt, on every version of Claude Code. On v2.1.287+, a bundled mod (`hooks/register.js`) reinforces the same approvals under auto mode's background classifier. You don't add anything to `~/.claude/settings.json` yourself, and the Environment phase deliberately does not generate a project-level permission allowlist — it would just duplicate what the hooks already do.
 
-The pipeline handles this automatically: the first time you run `/agile-dev:start`, `/agile-dev:improve`, `/agile-dev:change`, or `/agile-dev:iterate`, Step 0 of the command checks your `~/.claude/settings.json` and, if no rule covers the plugin, asks you once: *"Add `Read(<your-home>/.claude/plugins/cache/agile-dev/**)` to your user settings?"*. Reply **yes**, and from your next Claude Code session onwards the rule will be in effect — Claude reads `~/.claude/settings.json` once at session start, so the running session that added the rule still sees the old in-memory permission set and may prompt for the first few files; subsequent sessions don't.
-
-If you'd rather add the rule manually, drop this into the `permissions.allow` array in `~/.claude/settings.json` (replace `<HOME>` with your actual home directory):
-
-```json
-"Read(<HOME>/.claude/plugins/cache/agile-dev/**)"
-```
-
-**Heads-up: occasional prompts can still appear** even with the rule in place. Claude Code's permission matcher sometimes misses on transient reads even when an `allow` rule should match — a known harness behaviour, not a plugin or rule-syntax issue. Approving the prompt is harmless; if it gets noisy or repeats, file a `/feedback` report inside Claude Code with the specific path and rule. See the FAQ for details.
+**Heads-up: occasional prompts can still appear.** A genuinely unrecognised command (one the hooks don't match) falls through to the normal permission flow and prompts once — that's expected, not a bug. Approving it is harmless; if a routine command keeps prompting, the fix is adding it to the plugin's `hooks/guards.json` allow list, not a per-project settings change. See the FAQ for details.
 
 ---
 
@@ -266,7 +263,7 @@ Claude will read `.project-artifacts/state.md` and report the current phase, cur
 
 ### Resuming after a restart
 
-Just open Claude Code in the same project folder and run `/agile-dev:iterate` (or `/agile-dev:start` / `/agile-dev:improve`) again. The pipeline reads `.project-artifacts/state.md` automatically and picks up from where it left off.
+Just open Claude Code in the same project folder and run `/agile-dev:resume` — it reads `.project-artifacts/state.md` automatically, figures out whether you're mid-Foundation, mid-iteration, or mid standalone-change, and continues from there. Running `/agile-dev:iterate` (or `/agile-dev:start` / `/agile-dev:improve`) directly works too, as long as it matches whatever state you're actually in; `/agile-dev:resume` exists so you don't have to know which one that is.
 
 ---
 
@@ -277,8 +274,10 @@ After the pipeline has run for a while, your project will contain a `.project-ar
 ```
 .project-artifacts/
   state.md                        ← current position, backlog, and per-iteration history
-  policy.md                       ← pipeline policy (autonomy / detail / test_coverage)
+  policy.md                       ← pipeline policy (six knobs — see Pipeline policy above)
   pipeline-feedback.md            ← meta-feedback about the pipeline itself (created on first entry)
+  token-usage.md                  ← per-phase subagent token log, diagnostic (created on first phase completion)
+  pipeline-lessons.md             ← pipeline's own mistakes and fixes, auto-written (created on first genuine mistake)
   ana-analysis.md                 ← codebase analysis (improve mode only)
   f1-vision.md                    ← approved vision and goals
   f2-architecture.md              ← approved architecture decisions
@@ -289,23 +288,28 @@ After the pipeline has run for a while, your project will contain a `.project-ar
       i1-spec.md                  ← spec, acceptance criteria, and design decisions
       i2-plan.md                  ← task breakdown by role + BDD test scenarios
       i3-outcome.md               ← development + verification + integration results
-  releases/
-    v1.0.0.md                     ← release notes (created by /agile-dev:release)
-releases/                         ← runnable release artifacts (binaries / images / jars) — usually .gitignored
-  v1.0.0/
-    <artifact-files>              ← the actual built artifact(s)
-    RUN.md                        ← run instructions copied from architecture
-    MANIFEST.txt                  ← sha256 of every file in this dir
-dist/                             ← per-iteration runnable artifacts (created when policy.packaging=each) — .gitignored
-  001-<epic-slug>/
-    <artifact-files>              ← runnable build of iteration 001
   changes/
     <change-slug>/                ← /agile-dev:change outputs (standalone changes only)
       change-state.md
       spec.md
       plan.md
       outcome.md
-CHANGELOG.md                      ← root of project; appended at iteration close
+  releases/
+    v1.0.0.md                     ← release notes (created by /agile-dev:release)
+```
+
+Also at your project root — outside `.project-artifacts/`, created only once the pipeline produces a runnable artifact. Note `releases/` here is a different directory from `.project-artifacts/releases/` above: that one holds release *notes* (markdown), this one holds the release *artifacts* themselves.
+
+```
+dist/                             ← per-iteration runnable artifacts (created when policy.packaging=each) — .gitignored
+  001-<epic-slug>/
+    <artifact-files>              ← runnable build of iteration 001
+releases/                         ← runnable release artifacts (binaries / images / jars) — usually .gitignored
+  v1.0.0/
+    <artifact-files>              ← the actual built artifact(s)
+    RUN.md                        ← run instructions copied from architecture
+    MANIFEST.txt                  ← sha256 of every file in this dir
+CHANGELOG.md                      ← appended at iteration close
 ```
 
 These files are yours — you can read, edit, and commit them alongside your code.
@@ -321,7 +325,7 @@ The Environment phase generates a production build recipe (`Dockerfile` or `buil
 ## FAQ
 
 **What is `policy.md` and how do I change it?**
-A markdown file at `.project-artifacts/policy.md` holding three project-wide settings: `autonomy`, `detail`, and `test_coverage`. Set once during the first foundation command (Step 0.5). To change later, open the file and edit the values directly — the orchestrator reads it at the start of every `/agile-dev:iterate` and `/agile-dev:change` session. There's no slash command for editing; hand-edit is intentional, since policy changes are rare and a deliberate decision.
+A markdown file at `.project-artifacts/policy.md` holding six project-wide settings: `autonomy`, `detail`, `test_coverage`, `packaging`, `iteration_size`, and `requirement_rigor` — see the policy table above for what each one does. Set once, at Step 0 of whichever command starts the project (`/agile-dev:start`, `/agile-dev:improve`, or `/agile-dev:change` run standalone). To change later, open the file and edit the values directly — the orchestrator reads it at the start of every `/agile-dev:iterate`, `/agile-dev:change`, and `/agile-dev:resume` session. There's no slash command for editing; hand-edit is intentional, since policy changes are rare and a deliberate decision.
 
 **What happens if I run `/agile-dev:start` or `/agile-dev:improve` on a project that already has artifacts?**
 
@@ -347,7 +351,7 @@ A short, filename-friendly identifier derived from a longer name: lowercase, hyp
 Not supported in v1. Policy is project-wide. The workaround is to change `policy.md` between iterations and accept that you'll need to remember to switch it back. If per-iteration override becomes common, it's a future enhancement.
 
 **Where does the runnable app end up?**
-At Integration close, the pipeline writes the packaged deliverable to `dist/<NNN>-<slug>/` in your project root — accessible directly from the host through the dev-container bind mount. The directory contains the artifact itself (binary, jar, docker image tarball, etc.) plus run instructions copied from `f2-architecture.md`. Copy that directory to any machine that meets the runtime requirements (e.g. has a JVM if the deliverable is a jar) and you can run the app without checking out code or installing build tools. At `/agile-dev:release` boundaries, the same artifact is copied to `releases/v<version>/` with a `MANIFEST.txt` of sha256 hashes for verification.
+At Integration close, the pipeline writes the packaged deliverable to `dist/<NNN>-<slug>/` in your project root. If you're on the host (the common case), it's just a regular directory. If you opted into a dev container, the same path is accessible from the host too, through the container's bind mount. The directory contains the artifact itself (binary, jar, docker image tarball, etc.) plus run instructions copied from `f2-architecture.md`. Copy that directory to any machine that meets the runtime requirements (e.g. has a JVM if the deliverable is a jar) and you can run the app without checking out code or installing build tools. At `/agile-dev:release` boundaries, the same artifact is copied to `releases/v<version>/` with a `MANIFEST.txt` of sha256 hashes for verification.
 
 **Why is the production Dockerfile separate from `.devcontainer/Dockerfile`?**
 The dev container has Claude Code, build toolchains, language compilers, debuggers — everything you need to develop, but bloated for shipping. The project-root `Dockerfile` (generated by Environment when the deliverable type is `docker-image`) is multi-stage: a build stage that uses heavyweight tools, and a slim runtime stage (e.g. `distroless`, `alpine`) that contains only what the running app actually needs. The result is a small, secure image ready for production.
@@ -358,10 +362,11 @@ Depends on the stack. Architecture's "target platforms" list drives this. Go and
 **Can I disable tests entirely for a quick prototype?**
 Yes — set `test_coverage: none` in `.project-artifacts/policy.md`. The pipeline skips Test Plan and Verification phases entirely. Manual smoke at Integration becomes the only quality gate, and the Definition of Done adapts (`definitions.md` describes the changes). Combining this with `autonomy: ai-driven` triggers a confirmation prompt because you're removing both human approval and automated test gates — appropriate only for throwaway code.
 
-**Why am I being prompted for plugin files even though Step 0 added a permission rule?**
-Two reasons depending on when the prompt fires.
-First-session quirk — Step 0 writes the rule to `~/.claude/settings.json` mid-session, but Claude Code reads that file once at session start. So the running session still has the old in-memory permission set and may prompt for the first few plugin files. From the next session onwards the rule is loaded at startup and the path is silently allowed.
-Intermittent harness misses — even with the rule loaded correctly, Claude Code's permission matcher occasionally fails to recognise a covered path on a transient read. This is a known harness behaviour, not a plugin or rule-syntax problem. Approving the prompt is harmless. If it gets noisy or repeats, file a `/feedback` report inside Claude Code with the specific path and the rule from your settings.
+**What is the Definition of Scope Fidelity?**
+A fourth quality gate in `definitions.md`, alongside Ready/Testability/Done. Whenever a subagent drafts Vision, Architecture, Backlog, or Refinement content, it must also list every capability in the draft you didn't actually ask for — shown separately and first at the checkpoint, each needing an explicit confirm or strike from you. It exists because the other gates catch a requirement that's incomplete or ambiguous, not one that's complete, unambiguous, and simply never requested — a spec can pass Ready and Testability perfectly while still containing fabricated scope.
+
+**Why am I still prompted for some commands?**
+The plugin's hooks (`permission-gate.sh`, and on Claude Code v2.1.287+ the `register.js` mod too) auto-approve recognised dev tools — build/test/lint/format runners, local git, in-project writes — with no prompt. A command they don't recognise falls through to the normal permission flow and prompts once; that's expected, not a bug. If a routine command for your stack keeps prompting, the fix is adding it to the plugin's `hooks/guards.json` allow list (a plugin change, via a PR or your own fork), not a per-project settings change. Separately, under auto mode a background classifier reviews some actions independently of the hooks — if it's unsure about something the hooks already allowed, you may still see a prompt or a brief pause there; that's Claude Code's own auto-mode behaviour, not something this plugin controls.
 
 **Do I really need to be in a git repository?**
 Yes. The pipeline relies on git for commits, history, CHANGELOG entries, and mid-iteration recovery. `/agile-dev:start` will offer to `git init` if your directory isn't a repo yet. `/agile-dev:improve` and `/agile-dev:change` will warn and ask, because a non-git existing codebase usually means you're in the wrong directory.
@@ -370,13 +375,19 @@ Yes. The pipeline relies on git for commits, history, CHANGELOG entries, and mid
 Only if you said yes. Dev containers are opt-in; the Environment phase asks whether your project needs one and most projects don't. If you do opt in, it generates `.devcontainer/Dockerfile` and `.devcontainer/devcontainer.json`; in VS Code press `Cmd+Shift+P` → **Dev Containers: Reopen in Container** (Cursor and other container-aware editors have the same action) and Claude restarts inside it. If you don't, everything runs on the host with no further setup.
 
 **How do I pause in the middle of an iteration?**
-Close the Claude session at any approval checkpoint. `state.md` records where you are; the next `/agile-dev:iterate` resumes from the exact same phase.
+Close the Claude session at any approval checkpoint. `state.md` records where you are; running `/agile-dev:resume` (or `/agile-dev:iterate` directly) in the next session resumes from the exact same phase.
 
 **What is `state.md`?**
 A markdown file at `.project-artifacts/state.md` tracking the current phase, the current epic, the backlog (with statuses), completed iterations, and releases. The pipeline reads it on every command. Run `/agile-dev:status` to see a human-readable summary at any time.
 
 **What is `pipeline-feedback.md`?**
 A separate file at `.project-artifacts/pipeline-feedback.md` capturing **meta-feedback about the pipeline tool itself** (not your project). Append to it whenever something about the pipeline is awkward or surprising; it's reviewed at the iteration boundary. To turn the file into pipeline improvements, open Claude Code in the `agile-dev-pipeline` repo and run `/agile-dev:improve` against it.
+
+**What is `token-usage.md`?**
+A diagnostic log at `.project-artifacts/token-usage.md`, one row per completed phase: phase name, context (Foundation / iteration + epic / standalone change), subagent tokens spent in that phase, number of `Agent` calls, and a running cumulative total. Written automatically — nothing to turn on. It covers delegated subagent work only, since that's the only token usage a tool result exposes to the orchestrator; it does not include tokens the orchestrator itself spends on direct generation. Use it to find which phase or iteration used unexpectedly many tokens.
+
+**What is `pipeline-lessons.md`?**
+A diagnostic log at `.project-artifacts/pipeline-lessons.md`, written automatically whenever the *pipeline itself* — not your project — makes a genuine mistake and recovers from it: a Mid-iteration recovery tier firing, a checkpoint getting rejected because the draft substantively misread the request or added unrequested scope, or a hook denial that needed explaining. Each entry: what happened, why, how it was resolved. Different from `pipeline-feedback.md` in both author and trigger: that one is something *you* append when *you* notice friction; this one the pipeline writes on its own, without being asked, and only for real mistakes — ordinary checkpoint revisions (wording tweaks, preference changes) don't get logged.
 
 **Something went wrong mid-iteration — how do I recover?**
 The pipeline has three tiers:
@@ -425,6 +436,7 @@ agile-dev-pipeline/
     improve.md
     change.md
     iterate.md
+    resume.md                     ← continues from wherever state.md says the project is
     status.md
     release.md
     revise.md
@@ -440,12 +452,14 @@ agile-dev-pipeline/
     development.md
     verification.md
     integration.md
-    definitions.md                ← Definition of Ready / Testability / Done
+    retrospective.md              ← retired; explains what replaced it + still defines pipeline-feedback.md capture
+    definitions.md                ← Definition of Ready / Testability / Done / Scope Fidelity
   hooks/
-    hooks.json                    ← registers the PreToolUse permission + write guards
+    hooks.json                    ← registers the PreToolUse permission + write guards, and the mod below
     permission-gate.sh            ← auto-approves safe dev tools, blocks dangerous commands, gates git commit
     write-guard.sh                ← blocks credential writes, auto-approves in-project writes
-    guards.json                   ← policy lists the two guards read
+    register.js                   ← mod: reinforces the Bash allow-list under auto mode's classifier (Claude Code v2.1.287+)
+    guards.json                   ← policy lists all three of the above read
 ```
 
-The commands reference phase definitions via `${CLAUDE_PLUGIN_ROOT}/pipeline/<phase>.md`. The hooks are wired through `hooks/hooks.json` (auto-discovered when the plugin is enabled).
+The commands reference phase definitions via `${CLAUDE_PLUGIN_ROOT}/pipeline/<phase>.md`. The hooks are wired through `hooks/hooks.json` (auto-discovered when the plugin is enabled); the same file's `modules` key loads `register.js`.

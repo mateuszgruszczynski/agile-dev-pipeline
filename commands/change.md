@@ -8,7 +8,7 @@ Single-change runner. Detects whether the project has an existing pipeline and r
 
 ## Step 1 — Understand the change
 
-`$ARGUMENTS` is the change description. If empty, ask: `What change do you want to make? One or two sentences.`
+**Hard gate — do not proceed without a real change description.** `$ARGUMENTS` is the change description. If it is empty, whitespace-only, or clearly not a genuine attempt to describe a change (e.g. a stray keystroke from selecting this command in the CLI's autocomplete menu) — **stop immediately** and ask: `What change do you want to make? One or two sentences.` Wait for a real answer before doing anything else — not Step 2's pipeline detection, nothing. This holds under every autonomy setting.
 
 ---
 
@@ -68,7 +68,7 @@ Check `.project-artifacts/changes/*/change-state.md` for `status: IN_PROGRESS`.
 
 ## Step 4 — Standalone: policy
 
-Read `.project-artifacts/policy.md`. If missing, ask the user to configure the policy knobs (same as `/agile-dev:start` Step 0 — see that step for the current list). Idempotent — no-ops if the file exists.
+Read `.project-artifacts/policy.md`. If missing: **load `${CLAUDE_PLUGIN_ROOT}/commands/start.md` and run its Step 0 verbatim** — do not paraphrase the knob menu from memory or ask a shorter question instead; a first-time user has no other way to learn what each knob does. Idempotent — no-ops if the file exists.
 
 ---
 
@@ -115,6 +115,14 @@ slug: <slug>
 ```
 
 Run phases forward in one session. After each phase completes, advance `current_phase` in `change-state.md` and run the next. Do not ask the user to re-invoke `/agile-dev:change`.
+
+**Token usage log.** Every `Agent` tool call's result carries a usage block (`subagent_tokens`, `tool_uses`, `duration_ms`). Keep a running tally of `subagent_tokens` for the phase currently in progress, then append one row to `.project-artifacts/token-usage.md` (create with a header row if missing) when it finishes: `| <phase name> | Standalone change (<slug>) | <phase's subagent_tokens total> | <number of Agent calls this phase> | <new cumulative total> |`. Diagnostic only — don't narrate it in chat unless asked.
+
+**Pipeline lessons log.** Write an entry to `.project-artifacts/pipeline-lessons.md` (create with a header if missing) if a phase's checkpoint got rejected because the draft substantively misread the request or added scope nobody asked for — not just a wording or style preference. Format: `## <YYYY-MM-DD> · Standalone change (<slug>) · <short title>` then `**What happened:**` / `**Why:**` / `**How resolved:**`, one to two sentences each. Separate from `pipeline-feedback.md` (user-authored); this one is pipeline-authored, written automatically. Don't log ordinary revisions, only genuine mistakes.
+
+**Communication style.** Applies to every message this command produces. Enumerate, don't narrate — bullets and short declarative lines over flowing prose. Lead with the decision or the fact, not a preamble. At a checkpoint, lead with what's being decided, not a narrative recap of how we got there.
+
+**Checkpoint approval mechanism.** Every "wait for APPROVE" below means: use the `AskUserQuestion` tool (per `start.md`'s Checkpoint protocol) instead of a typed reply — options `Approve` and `Request changes`, with the built-in `Other` option covering "request changes, and type what" directly. Fall back to the plain-text prompt only if `AskUserQuestion` isn't available in this session.
 
 ### Refinement
 

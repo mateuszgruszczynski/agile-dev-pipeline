@@ -42,6 +42,8 @@ Points scale as `sqrt(3)^n` so each step is ~1.73× the previous — closer than
 
 **Use subagents:** for long backlogs (10+ epics), delegate per-epic detail-block generation to a subagent and review the set yourself before presenting. Keep the priority/sizing decisions with you — those need user judgment.
 
+**Definition of Scope Fidelity (see [definitions.md](definitions.md)):** each subagent must also return an "Added beyond what was stated" list — epics, scenarios, or ACs that go beyond what the Vision/Architecture/user conversation actually asked for. Present that list separately and first at the checkpoint, before the backlog table itself.
+
 **Output:**
 - Prioritized epic backlog table (name, type, priority, size, status)
 - Epic detail block for each epic: scenarios, high-level ACs, out of scope, risks

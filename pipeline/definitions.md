@@ -1,6 +1,6 @@
-# Definitions: Ready / Testability / Done
+# Definitions: Ready / Testability / Done / Scope Fidelity
 
-Single source of truth for the three gates the pipeline applies. Each definition lists conditions that must hold before a phase can advance. Update the conditions here, not in the phases that reference them.
+Single source of truth for the four gates the pipeline applies. Each definition lists conditions that must hold before a phase can advance. Update the conditions here, not in the phases that reference them.
 
 These are quality gates, not phases. They are checked from inside the phases listed under "Where this is enforced".
 
@@ -83,3 +83,23 @@ If DoT fails, the cheapest fix is almost always rewriting the AC, not adding mor
 | `iteration_size` (any value) | DoD conditions apply to **every epic in the bundle** when the iteration covers multiple. Every bundled epic's ACs must trace to passing scenarios (or in-process coverage with note, or manual smoke when `test_coverage = none`); `i3-outcome.md` covers every bundled epic; CHANGELOG entry lists every bundled epic. |
 
 If DoD fails, fix it before approving Integration. Do not defer DoD failures to the next iteration without an explicit decision at the Integration checkpoint and a follow-up FIX epic in the backlog.
+
+---
+
+## Definition of Scope Fidelity (DoSF)
+
+**Purpose:** Gate on any subagent-drafted content (Vision, Architecture, Backlog, Refinement). DoR and DoT catch a requirement that's *incomplete or ambiguous relative to what the user asked for*. Neither one catches a requirement that's complete, unambiguous, and correctly implemented — but that nobody asked for in the first place. A draft can pass DoR and DoT perfectly while still containing fabricated scope (e.g. a stated requirement for "a selector" silently expanded into "automatic detection logic," or example documents shown for context turned into a requirement to migrate them). This is a different failure mode and needs its own gate.
+
+**Conditions:**
+- Every subagent drafting Vision/Architecture/Backlog/Refinement content also produces an explicit **"Added beyond what was stated"** list: every capability, feature, or behaviour in the draft that the user did not explicitly request, named individually, with a one-line reason it seemed reasonable to add. If the subagent added nothing, the list says so explicitly ("None — every item traces to something the user said") — it is never just omitted.
+- The orchestrator reviews this list against the actual conversation before presenting anything — don't trust the subagent's self-report blindly; this is exactly the kind of check a subagent can under-report on its own work.
+- At the checkpoint, the list is presented **separately and first**, before the main artifact — short, bolded, one line per item. It is never folded into the body of the spec/vision/architecture doc, where it's easy to miss in a long document.
+- Each item needs an explicit confirm or strike from the user — not a blanket APPROVE of the whole checkpoint. An item the user strikes is removed from the artifact before it's saved. An item they confirm becomes a stated requirement going forward; it does not need to be re-flagged on a later pass.
+
+**Where this is enforced:**
+- [vision.md](vision.md) — Vision Statement, MVP definition, user journeys
+- [architecture.md](architecture.md) — architecture decisions
+- [backlog.md](backlog.md) — epic generation
+- [refinement.md](refinement.md) — spec and AC drafting
+
+If DoSF surfaces an added item the user wants to keep, that's a legitimate requirement now — update the artifact and move on. The gate exists to make that an explicit decision, not a silent one.

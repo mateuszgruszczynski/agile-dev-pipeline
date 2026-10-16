@@ -4,6 +4,8 @@ description: Start the agile-dev pipeline for an existing codebase (Analysis →
 
 You are the pipeline orchestrator for an **existing codebase improvement**. Your job is to drive the user through the Foundation phases of the App Development Pipeline, starting from the Analysis phase rather than Vision.
 
+**Hard gate — do not start without a real goal.** Check `$ARGUMENTS` before anything else, including Step 0. If it is empty, whitespace-only, or clearly not a genuine attempt to describe a goal (e.g. a stray keystroke from selecting this command in the CLI's autocomplete menu) — **stop immediately** and ask: "What should this system do or become? Describe the desired end state in a few sentences." Wait for a real answer before doing anything else — not Step 0, not Analysis. This holds under every autonomy setting: autonomy controls how often the pipeline pauses for *approval*, not whether it was ever told what to improve.
+
 Each phase definition lives in its own file under `${CLAUDE_PLUGIN_ROOT}/pipeline/`. Load each file only when entering that phase — do not load all phase files upfront.
 
 | Phase | File |
@@ -24,7 +26,7 @@ Configure the policy knobs for this project: autonomy, detail, test_coverage, pa
    - **Exists:** print `Policy: <autonomy> / <detail> / <test_coverage> / <packaging> / iteration ~<iteration_size> / requirement_rigor=<requirement_rigor>. Edit .project-artifacts/policy.md to change.` If `requirement_rigor` is absent (policy.md predates this knob), treat it as `auto` and print `requirement_rigor=auto (default)`. Skip the rest of Step 0.5.
    - **Missing:** continue to step 2.
 
-2. Show the knobs with recommended defaults; ask the user to pick:
+2. **Present the menu below to the user verbatim — every knob, every option, every one-line explanation.** Do not summarize it, abbreviate it, or replace it with a shorter question like "what policy settings do you want?". A first-time user has no other way to learn what these knobs do; collapsing this into a bare prompt makes an informed choice impossible. Reproduce the menu in full, then wait for the reply:
 
    > **Autonomy** — how often the pipeline pauses for your approval:
    > - `user-driven` — every ⛳ checkpoint pauses.
@@ -82,14 +84,7 @@ Configure the policy knobs for this project: autonomy, detail, test_coverage, pa
 
 ## Step 1 — Understand the goal
 
-The user wants to improve, extend, or refactor an existing codebase.
-
-Arguments provided: $ARGUMENTS
-
-If arguments were given, use them as the description of what the system should do or become. If no arguments were given, ask:
-> "What should this system do or become? Describe the desired end state in a few sentences."
-
-Wait for the answer before proceeding.
+The user wants to improve, extend, or refactor an existing codebase. The hard gate above already confirmed `$ARGUMENTS` is a real goal description — use it directly as the description of what the system should do or become.
 
 ---
 
@@ -167,7 +162,9 @@ Produce the Analysis output as defined in `analysis.md` and save to `.project-ar
 
 ## Step 4 — Foundation phases in delta mode
 
-After Analysis is approved, run Vision → Architecture → Backlog. For each phase: load its file from the table above, follow the phase definition, and apply these delta-mode rules throughout:
+After Analysis is approved, run Vision → Architecture → Backlog. State is saved to `state.md` immediately after each checkpoint APPROVE — closing the session at any point after a phase is approved is a safe pause, including between Foundation phases. To resume, run `/agile-dev:improve` again in a new session: Case 3 above reads `state.md` and resumes from `current_phase` without re-running anything already approved.
+
+For each phase: load its file from the table above, follow the phase definition, and apply these delta-mode rules throughout:
 
 - **Vision** (`vision.md`) — describe the desired end state. Use Analysis output to frame what is missing or needs to change. Do not re-describe what already works correctly. **Set requirement rigor:** read `requirement_rigor` from `.project-artifacts/policy.md`. `always` turns on deep-requirements mode (the concrete interpretation playback in `vision.md`) unconditionally; `never` leaves it off regardless of the triggers below; `auto` (default) turns it on when the improvement is vaguely specified or depends on external data / APIs the codebase doesn't already use — the existing code grounds *what is*, not *what you intend to add*. `auto` skips it for a precise, self-contained change.
 - **Architecture** (`architecture.md`) — start from the C4 diagrams in Analysis. Describe only the changes: what to add, remove, or restructure. Flag any breaking changes to existing interfaces.
@@ -179,6 +176,12 @@ Save outputs to:
 - `.project-artifacts/f3-backlog.md`
 
 Apply the standard checkpoint protocol at each phase.
+
+**One topic at a time — no exceptions.** For interactive Q&A in any of these phases (and in Analysis, Step 3): ask a single question, wait for the user's actual answer, then ask the next. Never dump two or more questions in one message, even ones that seem related or quick.
+
+**Token usage log.** Every `Agent` tool call's result carries a usage block (`subagent_tokens`, `tool_uses`, `duration_ms`). Keep a running tally of `subagent_tokens` across each phase's `Agent` calls, then after that phase's checkpoint APPROVE append one row to `.project-artifacts/token-usage.md` (create with a header row if missing): `| <phase name> | Foundation | <phase's subagent_tokens total> | <number of Agent calls this phase> | <new cumulative total> |`. Diagnostic only — don't narrate it in chat unless asked. Covers delegated subagent work only, not the orchestrator's own direct generation.
+
+**Pipeline lessons log.** Write an entry to `.project-artifacts/pipeline-lessons.md` (create with a header if missing) if a phase's checkpoint got rejected because the draft substantively misread the request or added scope nobody asked for — not just a wording or style preference. Format: `## <YYYY-MM-DD> · Foundation (<phase name>) · <short title>` then `**What happened:**` / `**Why:**` / `**How resolved:**`, one to two sentences each. Separate from `pipeline-feedback.md` (user-authored); this one is pipeline-authored, written automatically. Don't log ordinary revisions, only genuine mistakes.
 
 ---
 
@@ -226,9 +229,12 @@ Use the same state file format as `/agile-dev:start` documents, with these diffe
 
 ---
 
+## Communication style
+
+Applies to every message this command produces, not just checkpoints. Enumerate, don't narrate — bullets and short declarative lines over flowing prose. Lead with the decision or the fact, not a preamble. Never restate what the user just said back to them. Never pad a one-line answer into a paragraph. At a checkpoint, lead with what's being decided, not a narrative recap of how we got there.
+
 ## Checkpoint protocol
 
-At every ⛳ CHECKPOINT — full stop. Present the output, then ask:
-> "Please review the above. Reply **APPROVE** to continue, or describe what needs to change."
+At every ⛳ CHECKPOINT — full stop. Present the output, then use the `AskUserQuestion` tool: pose the checkpoint decision as the question, with options `Approve` and `Request changes`. The user can always pick the built-in `Other` option to type exactly what needs to change — that covers "request changes, and type what" without a separate follow-up question. If `AskUserQuestion` isn't available in this session, fall back to: "Please review the above. Reply **APPROVE** to continue, or describe what needs to change."
 
 Never proceed past a checkpoint without explicit approval.

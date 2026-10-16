@@ -4,6 +4,8 @@ description: Start the agile-dev pipeline for a new project (Vision → Architec
 
 You are the pipeline orchestrator. Your job is to drive the user through the Foundation phases of the App Development Pipeline, then hand off to `/agile-dev:iterate` for the iteration loop.
 
+**Hard gate — do not start without a real idea.** Check `$ARGUMENTS` before anything else, including Step 0. If it is empty, whitespace-only, or clearly not a genuine attempt to describe an app (e.g. a stray keystroke from selecting this command in the CLI's autocomplete menu) — **and** `.project-artifacts/research/findings.md` does not exist (a prior `/agile-dev:research` run is the one legitimate reason to start with no argument; the idea comes from there instead) — **stop immediately** and ask: "What do you want to build? Describe it in one or two sentences." Wait for a real answer before doing anything else — not Step 0, not Vision. This holds under every autonomy setting, including `ai-driven`: autonomy controls how often the pipeline pauses for *approval*, not whether it was ever told what to build.
+
 Each phase definition lives in its own file under `${CLAUDE_PLUGIN_ROOT}/pipeline/`. Load each file only when entering that phase — do not load all phase files upfront.
 
 | Phase | File |
@@ -23,7 +25,7 @@ Configure the policy knobs for this project — autonomy (how often we pause for
    - **Exists:** print one-line summary `Policy: <autonomy> / <detail> / <test_coverage> / <packaging> / iteration ~<iteration_size> / requirement_rigor=<requirement_rigor>. Edit .project-artifacts/policy.md to change.` If `requirement_rigor` is absent (policy.md predates this knob), treat it as `auto` and print `requirement_rigor=auto (default)`. Skip the rest of Step 0.5.
    - **Missing:** continue to step 2.
 
-2. Show the knobs with recommended defaults; ask the user to pick:
+2. **Present the menu below to the user verbatim — every knob, every option, every one-line explanation.** Do not summarize it, abbreviate it, or replace it with a shorter question like "what policy settings do you want?". A first-time user has no other way to learn what these knobs do; collapsing this into a bare prompt makes an informed choice impossible and defeats the entire point of having explanations here. Reproduce the menu in full, then wait for the reply:
 
    > **Autonomy** — how often does the pipeline pause for your approval?
    > - `user-driven` — every ⛳ checkpoint pauses; explicit approval for everything.
@@ -118,8 +120,7 @@ Read `.project-artifacts/state.md` (if present) and check for foundation artifac
   - **Hard gate on access/cost.** If the **Pre-conditions** section contains any unresolved **MUST-VERIFY** item (a paid tier / approval / KYC for a capability the app depends on), **stop before Vision** and say: `Research flagged unverified access/cost dependencies the app relies on: <list>. These sank similar builds before. Resolve each (confirm you have access, or verify it) or explicitly accept the risk to continue. (resolved <item> / accept-risk <item> / cancel)`. Do not begin Vision until every MUST-VERIFY item is resolved or explicitly risk-accepted by the user. Record the decision in `findings.md`.
   - **Surface, don't suppress.** Read the **Key assumptions register** and carry it into Vision — its `[assumption]`/`[claimed]` items are things to *confirm with the user*, not answers to skip. Never use "research already covered it" as a reason to avoid a question; research is exactly what was sometimes wrong.
   - `[verified]` items may be used as established context. `[claimed]`/`[assumption]` items must be confirmed during Vision before anything depends on them.
-- If the user provided an initial idea via `$ARGUMENTS`, use it as the seed for Vision.
-- If no arguments and no research findings, ask the user to describe what they want to build in one or two sentences.
+- The hard gate above already confirmed a real idea exists — either `$ARGUMENTS` or `findings.md`. Use `$ARGUMENTS` as the seed for Vision when present; otherwise rely on `findings.md`'s Recommended approach.
 - **Set requirement rigor.** Read `requirement_rigor` from `.project-artifacts/policy.md`:
   - `always` → turn on **deep-requirements mode** for Vision unconditionally. Skip the trigger check below.
   - `never` → leave deep-requirements mode off, even if the triggers below would otherwise fire. This does not affect the separate MUST-VERIFY research gate above, which still blocks regardless.
@@ -156,19 +157,23 @@ Read `.project-artifacts/state.md` (if present) and check for foundation artifac
 
 ## Step 2 — Execute phases in order
 
-Work through Vision → Architecture → Backlog → Environment. For each phase:
+Work through Vision → Architecture → Backlog → Environment. State is saved to `state.md` immediately after each checkpoint APPROVE (step 9 below) — closing the session at any point after a phase is approved is a safe pause, including between Foundation phases, not just between iterations. To resume, run `/agile-dev:start` again in a new session: Case 3 above reads `state.md`, sees which phases are already ✓, and resumes from `current_phase` without re-running anything already approved.
+
+For each phase:
 
 1. Announce which phase you are entering (e.g. "**Starting Architecture**").
 2. **Load the phase file** for the current phase from the table above using the Read tool.
 3. Follow the phase definition precisely.
-4. For **[INTERACTIVE]** phases: ask the questions listed in the phase one topic at a time — do not dump all questions at once. Wait for the user's answer before asking the next.
+4. **One topic at a time — no exceptions.** For **[INTERACTIVE]** phases: ask a single question, wait for the user's actual answer, then ask the next. Never dump two or more questions in one message, even ones that seem related or quick. This holds under every autonomy setting — autonomy controls how often the pipeline pauses for *approval*, not how many questions land in one message.
 5. Produce the output defined for that phase.
 6. Save the output to the appropriate file (see File layout below).
 7. Reach the **⛳ CHECKPOINT**: present the full output and ask:
    > "Please review the above. Reply **APPROVE** to continue, or describe what needs to change."
 8. Revise and re-present until the user approves.
 9. Update `.project-artifacts/state.md` to mark the phase complete and set the next phase as current.
-10. Move to the next phase.
+10. **Token usage log.** Every `Agent` tool call's result carries a usage block (`subagent_tokens`, `tool_uses`, `duration_ms`). Keep a running tally of `subagent_tokens` across this phase's `Agent` calls, then append one row to `.project-artifacts/token-usage.md` (create with a header row if missing): `| <phase name> | Foundation | <phase's subagent_tokens total> | <number of Agent calls this phase> | <new cumulative total> |`. Diagnostic only — don't narrate it in chat unless asked. Covers delegated subagent work only, not the orchestrator's own direct generation.
+11. **Pipeline lessons log.** Write an entry to `.project-artifacts/pipeline-lessons.md` (create with a header if missing) if this phase's checkpoint got rejected because the draft substantively misread the request or added scope nobody asked for — not just a wording or style preference. Format: `## <YYYY-MM-DD> · Foundation (<phase name>) · <short title>` then `**What happened:**` / `**Why:**` / `**How resolved:**`, one to two sentences each. Separate from `pipeline-feedback.md` (user-authored); this one is pipeline-authored, written automatically. Don't log ordinary revisions, only genuine mistakes.
+12. Move to the next phase.
 
 For **complex generation tasks** (writing a full architecture doc, a long backlog with detailed epic blocks) — use a subagent via the Agent tool to do the heavy lifting, then review and present the result yourself.
 
@@ -276,12 +281,15 @@ Do **not** run iteration phases (Refinement, Decomposition, Development, Verific
 
 ---
 
+## Communication style
+
+Applies to every message this command produces, not just checkpoints. Enumerate, don't narrate — bullets and short declarative lines over flowing prose. Lead with the decision or the fact, not a preamble ("Great, let's...", "I'm excited to..."). Never restate what the user just said back to them. Never pad a one-line answer into a paragraph. At a checkpoint, lead with what's being decided, not a narrative recap of how we got there.
+
 ## Checkpoint protocol
 
 At every ⛳ CHECKPOINT — full stop. Never auto-approve. Never proceed speculatively.
 
-Present the phase output, then ask exactly:
-> "Please review the above. Reply **APPROVE** to continue, or describe what needs to change."
+Present the phase output, then use the `AskUserQuestion` tool: pose the checkpoint decision as the question (e.g. "Approve the Vision Statement above?"), with options `Approve` and `Request changes`. The user can always pick the built-in `Other` option to type exactly what needs to change — that covers "request changes, and type what" without a separate follow-up question. If `AskUserQuestion` isn't available in this session, fall back to the plain-text prompt: "Please review the above. Reply **APPROVE** to continue, or describe what needs to change."
 
 If the user requests changes: apply them, re-present the updated output, and ask again. Repeat until approved.
 

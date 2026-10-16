@@ -39,9 +39,11 @@ Present each decision as one of two forms, all together in one message:
 
 Use **Decision needed** when multiple approaches are genuinely reasonable with meaningful consequences; the user (product owner *and* engineer) chooses. Use **Intended approach** when one path is clearly right for this stack but non-obvious enough that the user should know — a notification with an override window, not a question. Also always extend an open invitation: *"Anything else about how this should work that you want captured rather than left to me?"*
 
+**Parking a decision for deeper discussion.** Design decisions are presented together, by design — splitting them one-at-a-time here would be worse, since they're often related. But if the user wants to dig into *one* of them rather than just answering it, don't let that stall the rest or lose track of it: say "Parking [topic] for discussion — continuing with the others," resolve the rest, then return explicitly ("Back to [topic] — [one-line recap of what's being decided]") and settle it before writing `i1-spec.md`.
+
 Record every confirmed choice in the **Design Decisions** section of `i1-spec.md`. Treat them as constraints, not suggestions. Decomposition reads them; it does not re-ask.
 
-**Example behavioral questions — adapt to the conversation, do not run as a script:**
+**Example behavioral questions — adapt to the conversation, do not run as a script. One topic at a time — no exceptions:** ask a single question, wait for the user's actual answer, then ask the next. Never dump two or more questions in one message, even ones that seem related or quick.
 
 The list below is a non-exhaustive starter set. Pick the ones that close real gaps for *this* epic, ask follow-ups based on the answers, and skip any that the backlog detail block or earlier answers have already covered. **Stop asking when you have enough information to produce every item in the Output section below and every AC satisfies the Definition of Testability** — running through every example question is not the goal; getting to a confident, testable spec is.
 
@@ -58,8 +60,8 @@ The list below is a non-exhaustive starter set. Pick the ones that close real ga
 
 **Subagent — default for spec drafting.** Q&A and design-decision Q&A stay with the orchestrator (interactive). After both, delegate drafting to a subagent.
 
-- **Pass:** backlog detail block, user's answers, the confirmed design decisions, **the confirmed worked examples and non-goals from Vision (`f1-vision.md`) when present**, the Output requirements below. Tell it to apply DoT to every AC and to make every behavior-critical AC consistent with the worked examples — never to invent behaviour the examples or design decisions don't support.
-- **Expect:** full spec content as a single result. Orchestrator **reviews the draft against the worked examples and non-goals** — reject any AC that contradicts them or silently resolves an ambiguity the user didn't decide — then fixes and writes `i1-spec.md`.
+- **Pass:** backlog detail block, user's answers, the confirmed design decisions, **the confirmed worked examples and non-goals from Vision (`f1-vision.md`) when present**, the Output requirements below. Tell it to apply DoT to every AC and to make every behavior-critical AC consistent with the worked examples — never to invent behaviour the examples or design decisions don't support. Also require the **Definition of Scope Fidelity** list (see [definitions.md](definitions.md)) as part of its result: every AC or scenario in the draft that goes beyond what the epic, the user's answers, and the design decisions actually called for, named individually.
+- **Expect:** full spec content plus the Scope Fidelity list, as a single result. Orchestrator **reviews the draft against the worked examples and non-goals** — reject any AC that contradicts them or silently resolves an ambiguity the user didn't decide — then fixes and writes `i1-spec.md`. Present the Scope Fidelity list separately and first at the checkpoint, before the spec itself.
 
 Skip only for trivial-scope epics (one-line FIX, single-AC tweak).
 

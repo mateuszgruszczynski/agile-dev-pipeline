@@ -6,6 +6,10 @@ Iteration phase runner. Runs the iteration loop forward through every phase unti
 
 **Checkpoint footer.** Every ⛳ CHECKPOINT presentation in this command — Environment, Refinement, Decomposition + Plan, Integration — ends with one compact progress line, computed from `state.md`: `Progress: Iteration <iteration> · <current_epic> · <X>/<Y> epics done`, where `<X>/<Y>` counts `DONE` epics against all epics in the Backlog table. This is the only status output at checkpoint time — do not print the full `/agile-dev:status` report here.
 
+**Communication style.** Applies to every message this command produces. Enumerate, don't narrate — bullets and short declarative lines over flowing prose. Lead with the decision or the fact, not a preamble. At a checkpoint, lead with what's being decided, not a narrative recap of how we got there.
+
+**Checkpoint approval mechanism.** Every "wait for APPROVE" in this file means: use the `AskUserQuestion` tool (per `start.md`'s Checkpoint protocol) instead of a typed reply. Options are `Approve` and `Request changes` for Refinement and Decomposition + Plan; for Integration's checkpoint, add a third option when a release boundary applies (`Approve + flag release boundary`). The built-in `Other` option covers "request changes, and type what" directly. Fall back to the plain-text prompt only if `AskUserQuestion` isn't available in this session.
+
 ---
 
 ## Step 1 — Validate state
@@ -94,7 +98,20 @@ Read the phase file for `current_phase`. Load artifacts listed in the phase's `L
 
 **Permissions are handled by the plugin's PreToolUse hooks** (`hooks/permission-gate.sh`, `hooks/write-guard.sh`) — do not stop to ask the user for tool approvals. Recognised dev tools (build / test / lint / format runners, local git, in-project writes) are auto-approved with no prompt; dangerous commands are blocked. A genuinely unrecognised command falls through to the normal permission flow and prompts once — that is expected, not an error to route around. If a project repeatedly uses a dev tool the hook doesn't recognise, the fix is to add it to the plugin's `hooks/guards.json` allow list (a plugin change), not to special-case it here.
 
+**If a backlog change is needed mid-iteration** (any phase realizes an epic should be added, reprioritised, or dropped): do not tell the user to run `/agile-dev:revise backlog` — that command explicitly refuses outside `current_phase: Idle` and will just reject them. Instead: for a simple addition or reprioritisation, edit `f3-backlog.md` directly, right now — no command needed, the backlog is always editable. For something that's a genuine revision of the Backlog phase's own reasoning (not just adding an epic), note it as a forward item ("worth running `/agile-dev:revise backlog` once this iteration reaches Idle") rather than an instruction to act on immediately. Generalises: any time a phase needs to mention a future action, phrase it as a forward note, not a present-tense imperative — only the phase actually ready for that action tells the user to do it now.
+
 **After each phase finishes** (checkpoint APPROVE, auto-continue, or no-checkpoint completion): advance `current_phase` in `state.md` and run the next phase in the same session. Apply the test_coverage override above when deciding which next phase to run. Do not ask the user to re-invoke `/agile-dev:iterate`. The loop pauses only at: a ⛳ CHECKPOINT awaiting APPROVE (per the autonomy override), or the user closing the session.
+
+**Token usage log.** Every `Agent` tool call's result carries a usage block (`subagent_tokens`, `tool_uses`, `duration_ms`). Keep a running tally of `subagent_tokens` for the phase currently in progress. The moment that phase finishes (same trigger as the paragraph above), append one row to `.project-artifacts/token-usage.md` (create with a header row if missing): `| <phase name> | Iteration <N> (<epic>) | <phase's subagent_tokens total> | <number of Agent calls this phase> | <new cumulative total = previous cumulative + this phase's total> |`. This is a diagnostic log for the user, not something to mention unless asked — don't narrate it in chat. Note the scope: this tracks delegated subagent work only, not tokens spent by the orchestrator's own direct generation — state that limitation if the user asks about total session cost.
+
+**Pipeline lessons log.** Write an entry to `.project-artifacts/pipeline-lessons.md` (create with a header if missing) whenever something about the *pipeline itself* — not the user's project content — went wrong and got fixed: a Mid-iteration recovery tier fires (see below), a checkpoint gets rejected because the draft substantively misread the request or added scope nobody asked for (not just a wording or style preference), or a hook denial blocks something that needed explaining or working around. Format:
+```
+## <YYYY-MM-DD> · Iteration <N> (<epic>) · <short title>
+**What happened:** <1-2 sentences>
+**Why:** <root cause, 1-2 sentences>
+**How resolved:** <what fixed it>
+```
+This is separate from `pipeline-feedback.md` (user-authored — the user appends it whenever *they* notice friction) — this file is pipeline-authored, written automatically, never something to ask permission for. Do not log ordinary checkpoint revisions (wording tweaks, preference changes) — only genuine mistakes.
 
 ---
 
@@ -285,6 +302,8 @@ Foundational assumption was wrong / epic no longer needed / external dependency 
 ### Choosing a tier
 
 Lowest that fits. Uncertain between 1 and 2 → ask the user. Tier 3 only when there is nothing to keep.
+
+**Every tier that fires gets a `pipeline-lessons.md` entry** (see the Pipeline lessons log rule above) — what the defect was, why it happened, and which tier resolved it. This is the clearest, least ambiguous trigger for that log: a recovery tier firing always means something went wrong, no judgment call needed about whether it's worth recording.
 
 ---
 

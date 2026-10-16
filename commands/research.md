@@ -4,11 +4,13 @@ description: Research feasibility and implementation approach for a novel app id
 
 Research runner. Takes a rough idea, identifies what's unknown, searches the web, writes and runs probe scripts to collect structured data without token waste, and produces a findings artifact that tells you whether and how to build the thing before committing to a full pipeline.
 
+**Communication style.** Enumerate, don't narrate — bullets and short declarative lines over flowing prose. Lead with the decision or the fact, not a preamble.
+
 ---
 
 ## Step 1 — Capture the idea
 
-`$ARGUMENTS` is the idea description. If empty or too vague to act on, ask:
+**Hard gate — do not research without a real idea.** `$ARGUMENTS` is the idea description. If it is empty, whitespace-only, or clearly not a genuine attempt to describe an app (e.g. a stray keystroke from selecting this command in the CLI's autocomplete menu) or otherwise too vague to act on, **stop immediately** and ask:
 
 > *"Describe the app you want to research. What problem does it solve? What are you most uncertain about — technical feasibility, data availability, existing solutions, cost, legal?"*
 
@@ -17,6 +19,8 @@ Keep asking follow-up questions until you have:
 - What external data, APIs, or services it likely depends on
 - Any known constraints (platform, budget, must-use technology)
 - What the user is most uncertain about
+
+**If the user points at external reference files** (sample data, existing specs, example documents) living outside the project directory: once it's clear you'll need to read more than one or two of them, offer to add a permission rule scoped to just that directory — `Read(<that directory>/**)` in `~/.claude/settings.json` — instead of leaving the user to hit Claude Code's own all-or-nothing "allow reads outside the working directory" prompt. Ask first; if the user agrees, read `~/.claude/settings.json` (create it if missing), add the rule to `permissions.allow`, write it back, and confirm. If they decline, continue normally.
 
 Do not start researching until you understand what the unknowns actually are.
 
@@ -162,9 +166,11 @@ Specific things that must be true before `/agile-dev:start` proceeds. Includes *
 1. Read out the **MUST-VERIFY access/cost items** one by one. For each, ask the user to either confirm from their own knowledge ("yes, I have the paid tier" / "no, that function is enterprise-only") or accept it as an open pre-condition to verify before building. Update each item's status from their answer.
 2. Read out the **Key assumptions register**, especially any `[assumption]` about *what the app is meant to do*. Correct the user's intent here, now — this is where a vague brief gets misread.
 3. Restate the **Feasibility verdict** after their answers (it may move from Yellow toward Green as items resolve, or to Red if something they know rules it out).
-4. If **Recommended approach** contains a **Candidate comparison** (multiple viable sources/approaches survived probing), present the Option A/B/C/D choice now and ask the user to pick — do not pick for them. Record the chosen option in `findings.md` under Recommended approach before moving on.
+4. If **Recommended approach** contains a **Candidate comparison** (multiple viable sources/approaches survived probing), use the `AskUserQuestion` tool to present the Option A/B/C/D choice and ask the user to pick — do not pick for them. Record the chosen option in `findings.md` under Recommended approach before moving on.
 
-Then wait for approval.
+This walkthrough covers a grouped set of items, not one question per message. If the user wants to dig into *one* item rather than just deciding it, don't let that stall the rest or lose track of it: say "Parking [item] for discussion — continuing with the rest," walk the remaining items, then return explicitly ("Back to [item] — [one-line recap]") and resolve it before approval.
+
+Then use the `AskUserQuestion` tool for final approval: options `Approve` and `Request changes`, with the built-in `Other` option covering "request changes, and type what" directly. Fall back to a plain-text "reply APPROVE" prompt only if `AskUserQuestion` isn't available in this session.
 
 After approval, say:
 

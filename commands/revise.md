@@ -6,6 +6,10 @@ You are the foundation revise runner. Use this command when Retrospective produc
 
 This is **optional**. Most iterations should not need it. Run it only when the retro explicitly says "Revisit X" or the user has decided a foundation change is needed.
 
+**Communication style.** Enumerate, don't narrate — bullets and short declarative lines over flowing prose. Lead with the decision or the fact, not a preamble.
+
+**Checkpoint approval mechanism.** The ⛳ CHECKPOINT below means: use the `AskUserQuestion` tool (per `start.md`'s Checkpoint protocol) instead of a typed reply — options `Approve` and `Request changes`, with the built-in `Other` option covering "request changes, and type what" directly. Fall back to the plain-text prompt only if `AskUserQuestion` isn't available in this session.
+
 ---
 
 ## Step 1 — Validate state
@@ -19,7 +23,7 @@ Read `.project-artifacts/state.md`.
 
 ## Step 2 — Pick the phase to revise
 
-If `$ARGUMENTS` is provided, parse it as the phase name: `vision`, `architecture`, or `backlog` (case-insensitive). Otherwise, ask:
+If `$ARGUMENTS` is provided **and matches one of the three phase names** (`vision`, `architecture`, or `backlog`, case-insensitive), use it. Otherwise — empty, whitespace-only, a stray keystroke, or text that doesn't match any of the three — **stop and ask**, do not guess which phase was meant:
 
 > "Which foundation phase needs revision?
 > 1. Vision — `f1-vision.md`

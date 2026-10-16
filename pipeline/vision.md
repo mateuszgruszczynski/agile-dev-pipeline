@@ -4,6 +4,8 @@
 
 *When entering from Analysis (existing codebase): Vision describes the **desired end state** of the system, not the current one. Frame it as "what should this system do / become" and use the Analysis output to highlight the delta — what is missing, what needs to change, what should be removed.*
 
+**If the user points at external reference files** (example documents, existing specs, sample data) living outside the project directory: once it's clear you'll need to read more than one or two of them, offer to add a permission rule scoped to just that directory — `Read(<that directory>/**)` in `~/.claude/settings.json` — instead of leaving the user to hit Claude Code's own all-or-nothing "allow reads outside the working directory" prompt (which only offers "allow everything outside the project" or "ask every time," no middle ground). Ask first; if the user agrees, read `~/.claude/settings.json` (create it if missing), add the rule to `permissions.allow`, write it back, and confirm. If they decline, continue — reads proceed through Claude Code's normal prompt flow as usual.
+
 **What to explore:**
 - What problem does this app solve? For whom?
 - What is the expected user experience in one sentence?
@@ -38,11 +40,15 @@ A high-level idea is the single biggest source of silent misinterpretation — y
 3. **State explicit non-goals.** "This is NOT a ___ / it does NOT do ___." Wrong interpretations usually hide in the unstated boundary.
 4. **Confirm the assumptions register.** If research produced a Key assumptions register, walk its intent-related items here and correct them. Otherwise, list the interpretation choices you'd otherwise make silently and have the user confirm or correct each.
 
+This register is a grouped set, walked together — not asked one item per message. But if the user wants to dig into *one* item rather than just confirming it, don't let that stall the rest or lose track of it: say "Parking [item] for discussion — continuing with the rest," walk the remaining items, then return explicitly ("Back to [item] — [one-line recap]") and resolve it before moving on.
+
 Ask the user to confirm or correct the playback before you draft anything. Treat a correction as a hard requirement. **Do not delegate drafting until the interpretation is confirmed** — otherwise the subagent inherits the misread.
 
 For a small, clearly-specified, self-contained app (deep-requirements mode off), skip this — a one-line restatement is enough.
 
 **Use subagents:** the Q&A and the interpretation playback are interactive and stay with you. Only after the user has confirmed the concrete interpretation may you delegate Vision Statement drafting (and the user-journey narratives) to a subagent — and pass it the confirmed worked examples and non-goals, not just the abstract idea. Review the result against those examples before the checkpoint.
+
+**Definition of Scope Fidelity (see [definitions.md](definitions.md)):** the subagent must also return an "Added beyond what was stated" list — anything in the draft the user didn't actually ask for. Present that list separately and first at the checkpoint, before the Vision Statement itself.
 
 **Output:**
 - Product Vision Statement (2–4 sentences)
