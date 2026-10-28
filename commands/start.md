@@ -171,7 +171,7 @@ For each phase:
    > "Please review the above. Reply **APPROVE** to continue, or describe what needs to change."
 8. Revise and re-present until the user approves.
 9. Update `.project-artifacts/state.md` to mark the phase complete and set the next phase as current.
-10. **Token usage log.** Every `Agent` tool call's result carries a usage block (`subagent_tokens`, `tool_uses`, `duration_ms`). Keep a running tally of `subagent_tokens` across this phase's `Agent` calls, then append one row to `.project-artifacts/token-usage.md` (create with a header row if missing): `| <phase name> | Foundation | <phase's subagent_tokens total> | <number of Agent calls this phase> | <new cumulative total> |`. Diagnostic only — don't narrate it in chat unless asked. Covers delegated subagent work only, not the orchestrator's own direct generation.
+10. **Token usage log.** Every `Agent` tool call's result carries a usage block (`subagent_tokens`, `tool_uses`, `duration_ms`). Keep a running tally of `subagent_tokens` and the call count across this phase's `Agent` calls, then hand the totals to `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/log_tokens.py --file .project-artifacts/token-usage.md --phase "<phase name>" --context "Foundation" --tokens <total> --calls <count>` instead of formatting the row by hand — it creates the header on first use and computes the cumulative total. Diagnostic only — don't narrate it in chat unless asked. Covers delegated subagent work only, not the orchestrator's own direct generation.
 11. **Pipeline lessons log.** Write an entry to `.project-artifacts/pipeline-lessons.md` (create with a header if missing) if this phase's checkpoint got rejected because the draft substantively misread the request or added scope nobody asked for — not just a wording or style preference. Format: `## <YYYY-MM-DD> · Foundation (<phase name>) · <short title>` then `**What happened:**` / `**Why:**` / `**How resolved:**`, one to two sentences each. Separate from `pipeline-feedback.md` (user-authored); this one is pipeline-authored, written automatically. Don't log ordinary revisions, only genuine mistakes.
 12. Move to the next phase.
 
@@ -237,11 +237,11 @@ iteration: <N>
 - Environment ✓
 
 ## Backlog (copy from f3-backlog.md, keep in sync)
-| Priority | Epic | Size | Status |
-|---|---|---|---|
-| P1 | User Authentication | M | DONE |
-| P1 | CSV Import | S | IN_PROGRESS |
-| P2 | Dashboard | L | TODO |
+| ID | Priority | Epic | Size | Status | Slice | Depends on |
+|---|---|---|---|---|---|---|
+| EP-1 | P1 | User Authentication | M | DONE | MVP | — |
+| EP-2 | P1 | CSV Import | S | IN_PROGRESS | MVP | EP-1 |
+| EP-3 | P2 | Dashboard | L | TODO | Deferred | — |
 
 ## Completed iterations
 | # | Epics | Status | Closed | Notes | Outcome |
@@ -264,6 +264,7 @@ Notes:
 - The `Completed iterations` table is empty until the first iteration closes; `/agile-dev:iterate` appends rows at iteration close. Split iterations (mid-iteration recovery Tier 2) appear as `<NNN>-A` and `<NNN>-B` rows. The `Status` column is `DONE` for completed iterations and `ABANDONED` for Tier 3 closures. The `Notes` column carries a one-line summary (or the abandonment reason). The `Outcome` column links to `i3-outcome.md` for completed iterations. The `Epics` column lists every epic bundled into the iteration with its t-shirt size in parens; a bundle joins them with ` + `.
 - The `Releases` and `Foundation revisions` tables stay empty until their respective commands run; keep the headings as placeholders so the format stays consistent.
 - Update `status` to `COMPLETE` when all epics are `DONE`.
+- **`ID` and `Depends on` are load-bearing, not decorative.** `/agile-dev:iterate`'s bundler, the checkpoint footer, and the backlog integrity check all parse this table as data (see [iterate.md](../commands/iterate.md) Step 2) — `ID` must be the epic's stable `EP-<n>` and `Depends on` must use IDs, comma-separated, `—` if none, `needs-findings-from:<id>` for a SPIKE design-blocker (see [backlog.md](../pipeline/backlog.md)). Keep this table byte-for-byte in sync with `f3-backlog.md`'s own table, not just approximately.
 
 ---
 

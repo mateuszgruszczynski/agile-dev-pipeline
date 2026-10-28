@@ -14,9 +14,11 @@ Read `.project-artifacts/f2-architecture.md`. Extract:
 - Whether Docker is needed (containerised app, Testcontainers, Docker Compose for local services)
 - Any additional CLI tools needed for testing or deployment
 - **App type** — specifically whether this is a **native GUI desktop app** (egui, Qt, GTK, wxWidgets, Swift/AppKit, Win32, etc.)
-- **Out-of-process test requirements** — whether Verification needs Docker for Testcontainers or docker-compose service stacks
+- **Out-of-process test requirements** — whether Verification needs Docker for Testcontainers or docker-compose service stacks. If the project is likely to grow a large regression suite (see [verification.md](verification.md)'s parallel-safe execution note), account for that here too: per-process ports rather than a fixed port, and a shared read-only built binary rather than one rebuilt per test run.
 
 If the app type is native GUI: flag the project as **hybrid mode** — build and test in any environment, run the app on the host for demo and manual smoke.
+
+**`improve` mode, existing codebase about to be substantially replaced:** if the prototype or scaffold currently in the repo is what the first backlog epic(s) will remove or replace, the recipe this phase generates can't actually be verified yet — there's nothing in its final shape to run it against. Record "recipe unverified until the first epic that builds" in `state.md`, and add "production recipe runs" to that first epic's Definition of Done automatically, rather than relying on it being the scaffold-replacement epic by coincidence.
 
 ---
 

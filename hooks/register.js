@@ -101,7 +101,13 @@ export function register(on) {
     // Redundant with permission-gate.sh by design — never remove this.
     for (const pattern of guards.deny) {
       if (pattern.test(cmd)) {
-        return { decision: 'deny', reason: 'Blocked by agile-dev guard (mod): ' + pattern.source }
+        return {
+          decision: 'deny',
+          reason:
+            'Blocked by agile-dev guard (mod, pattern: ' + pattern.source + '). ' +
+            'If this is legitimate (e.g. cleaning up a path the session itself created), ' +
+            'approve it yourself with: !' + cmd,
+        }
       }
     }
 

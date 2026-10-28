@@ -23,7 +23,9 @@ Read `.project-artifacts/state.md`.
 
 ## Step 2 — Pick the phase to revise
 
-If `$ARGUMENTS` is provided **and matches one of the three phase names** (`vision`, `architecture`, or `backlog`, case-insensitive), use it. Otherwise — empty, whitespace-only, a stray keystroke, or text that doesn't match any of the three — **stop and ask**, do not guess which phase was meant:
+`$ARGUMENTS` may carry a `--from <path>` suffix naming a delta-source file (e.g. a SPIKE epic's findings document — see Step 3). Strip it before reading the phase name.
+
+If what remains **matches one of the three phase names** (`vision`, `architecture`, or `backlog`, case-insensitive), use it. Otherwise — empty, whitespace-only, a stray keystroke, or text that doesn't match any of the three — **stop and ask**, do not guess which phase was meant:
 
 > "Which foundation phase needs revision?
 > 1. Vision — `f1-vision.md`
@@ -44,7 +46,11 @@ Load the relevant phase file and the existing artifact:
 | Architecture | `${CLAUDE_PLUGIN_ROOT}/pipeline/architecture.md` | `.project-artifacts/f2-architecture.md` |
 | Backlog | `${CLAUDE_PLUGIN_ROOT}/pipeline/backlog.md` | `.project-artifacts/f3-backlog.md` |
 
-Ask the user:
+**If `--from <path>` was given:** read that file (e.g. a SPIKE epic's findings document and its foundation-impact section) and use its content as the delta directly — present a one-line summary of what you read and ask the user to confirm it's the right delta, rather than asking them to re-describe a change that's already written down:
+
+> "Using the foundation-impact section from `<path>` as the delta for <phase>: `<one-line summary>`. Confirm, or describe what's different? (confirm / describe differently)"
+
+**Otherwise, ask the user directly:**
 
 > "What needs to change in <phase>? Summarise the delta — I'll start from the current artifact, not from scratch."
 

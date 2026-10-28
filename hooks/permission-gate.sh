@@ -43,7 +43,24 @@ except Exception:
 for pat in cfg.get("bash_deny", []):
     try:
         if re.search(pat, cmd):
-            print("DENY\t" + pat); sys.exit(0)
+            # Build the full JSON line here, in Python, rather than reassembling
+            # it from tab-split fields in bash: the command/pattern text can
+            # contain quotes or backslashes that would otherwise produce
+            # invalid JSON from a hand-built printf. json.dumps handles escaping
+            # correctly regardless of what the blocked command contains.
+            obj = {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": (
+                        "Blocked by agile-dev guard (pattern: " + pat + "). "
+                        "If this is legitimate (e.g. cleaning up a path the session itself "
+                        "created), approve it yourself with: !" + cmd
+                    ),
+                }
+            }
+            print("JSON\t" + json.dumps(obj))
+            sys.exit(0)
     except re.error:
         continue
 
@@ -89,8 +106,10 @@ KIND=${DECISION%%$'\t'*}
 REASON=${DECISION#*$'\t'}
 
 case "$KIND" in
-  DENY)
-    emit deny "Blocked by agile-dev guard (pattern: ${REASON})"
+  JSON)
+    # Already a complete, correctly-escaped hookSpecificOutput line (see the
+    # Python side above) — print it verbatim, don't run it through emit().
+    printf '%s\n' "$REASON"
     exit 0
     ;;
   ALLOW)
@@ -103,7 +122,21 @@ case "$KIND" in
       if [ -f "Cargo.toml" ]; then
         echo "cargo test --lib --quiet"; return 0
       elif [ -f "go.mod" ]; then
-        echo "go test -short ./..."; return 0
+        # Scope to packages containing staged Go changes, not the whole
+        # module: `go test -short ./...` on every commit blocks parallel
+        # agents editing different packages in the same working tree against
+        # each other's unfinished work. Falls back to the whole module when
+        # nothing is staged yet (e.g. `git commit -a`) or git isn't available
+        # — same behaviour as before in that case.
+        local pkgs
+        pkgs=$(git diff --cached --name-only --diff-filter=ACMR -- '*.go' 2>/dev/null \
+          | xargs -r -n1 dirname 2>/dev/null | sort -u | sed 's#^#./#')
+        if [ -n "$pkgs" ]; then
+          echo "go test -short $pkgs"
+        else
+          echo "go test -short ./..."
+        fi
+        return 0
       elif [ -f "package.json" ] && python3 -c "import json,sys; sys.exit(0 if 'test:unit' in (json.load(open('package.json')).get('scripts') or {}) else 1)" 2>/dev/null; then
         if   [ -f "pnpm-lock.yaml" ]; then echo "pnpm run test:unit"
         elif [ -f "yarn.lock" ];      then echo "yarn run test:unit"

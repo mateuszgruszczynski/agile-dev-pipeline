@@ -69,6 +69,8 @@
 
 8. **Demo preparation.** If the epic produces a demonstrable user-visible state, prepare a short script covering the happy path. Early epics (project setup, CI, base schema) may not — note explicitly and confirm build/start still works.
 
+9. **For SPIKE epics (see [backlog.md](backlog.md)), surface the foundation-impact section.** Read it from the findings document. If it states real impact — Vision, Architecture, or Backlog needs revising — present it as its own, separate checkpoint item: "Foundation changes recommended: `<vision | architecture | backlog>`" — not folded into the AC pass/fail table below, where it would be easy to miss. If it says "no impact," note that in one line and move on. What happens with a real impact (offering to run the revise inline) is handled at the iteration boundary — see [iterate.md](../commands/iterate.md).
+
 ---
 
 ## Demo readiness checklist

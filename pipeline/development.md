@@ -1,6 +1,6 @@
 # Development Phase
 
-**Purpose:** Implement the epic — code + in-process tests (Unit, Component, in-process Contract). Code Review is a self-applied checklist; no separate Review checkpoint. Out-of-process tests (System-integration, E2E, out-of-process Contract) belong to [Verification](verification.md).
+**Purpose:** Implement the epic — code + in-process tests (Unit, Component, in-process Contract). Code Review has two passes: a self-applied checklist first, then an independent review subagent second — no separate human-facing Review checkpoint either way. Out-of-process tests (System-integration, E2E, out-of-process Contract) belong to [Verification](verification.md).
 
 TDD at in-process levels: tests written before or alongside code, never after.
 
@@ -13,7 +13,11 @@ TDD at in-process levels: tests written before or alongside code, never after.
 
 *Existing codebases:* run the existing in-process suite first to establish a green baseline. Pre-existing failures become FIX epics, not silent inheritance. Match existing style unless the epic calls for a change.
 
+**If implementation surfaces a genuine ambiguity the spec and design decisions don't resolve**, ask the user using [refinement.md](refinement.md)'s **Decision needed** / **Intended approach** template — the same rich format (topic, options with tradeoffs, or the intended approach and why) used for Refinement's own design decisions — not a short title and a one-line summary. A terse ad hoc question is exactly what forces the user to ask for elaboration before they can answer it at all.
+
 **Subagents** for independent parallel implementation work (different modules, no shared state). Apply the self-review checklist to subagent output the same as your own.
+
+**Git worktrees for parallel tracks, if used, stay outside the repository.** A worktree created under a path the project's own tests scan (e.g. inside `.claude/` or anywhere under the repo root) can make repo-wide static checks see the worktree's second copy of the source and false-fail every commit until it's removed. If a parallel track also needs its own commit-time test gate (the fast per-commit tests run on the whole working tree, which blocks other parallel tracks touching the same language — see `hooks/permission-gate.sh`), isolating that track in its own worktree is the practical workaround; just keep the worktree itself outside any path the project's own static/regression tests walk.
 
 **Security rules — from the first commit:**
 - No hardcoded credentials, API keys, DB passwords, tokens
@@ -21,11 +25,13 @@ TDD at in-process levels: tests written before or alongside code, never after.
 - `.env.example` with placeholders committed; real `.env` in `.gitignore`
 - Verify no secrets committed before every push (pre-commit hook or scanner)
 
+**Confidential inputs.** When an epic needs to read confidential content (internal docs, customer data, proprietary systems) to inform behaviour or supply fixtures: delegate the fetch to a subagent that writes raw content to a git-ignored folder and reports only metadata back (sizes, counts, error text) — keep the actual content out of both the orchestrator's context and any committed file. Add a leak-scan test to Verification whenever confidential samples exist: check sample lines against tracked files, sanity-checked with a deliberately planted line so the scan is known to actually catch something.
+
 ---
 
 ## Self-review checklist
 
-Apply before declaring Development complete. Self-applied gate — no separate Review.
+Apply before declaring Development complete. First pass — the independent code review below runs after this one, not instead of it.
 
 - [ ] Matches ACs from Refinement and in-process scenarios from the Test Plan
 - [ ] Edge cases handled in code (separate from out-of-process coverage)
@@ -44,6 +50,20 @@ Apply before declaring Development complete. Self-applied gate — no separate R
 - Over-engineering that doesn't fit the project's simplicity level
 
 Any item fails → fix before producing the summary.
+
+---
+
+## Independent code review
+
+Runs after the self-review checklist, not instead of it. Done by a **second subagent, separate from whichever subagent or the orchestrator wrote the code** — the same author checking their own blind spots is exactly the thing that doesn't reliably work. Three things to check:
+
+1. **Code quality** — readability, structure, consistency with the agreed architecture, unnecessary complexity. Specifically useful for catching what the self-review's own "AI-generated code" checks might miss.
+2. **Test coverage** — not just "are there tests" (self-review already claims this) but whether they're meaningful: spot-check that claimed AC coverage actually holds, look for obviously untested branches or edge cases, check coverage is proportionate to risk rather than uniform.
+3. **Purpose comprehension, via a blind read.** Give the reviewing subagent *only* the code, not the spec or ACs. Have it state in its own words what each component appears to be for. Compare that inferred purpose against the actual spec/ACs, which it wasn't shown. A real divergence is a strong, concrete signal the code doesn't express its own intent clearly — missing names, docs, or structure — independent of whether it technically passes its tests.
+
+Findings surface the same way as the Scope Fidelity gate's list (see [definitions.md](definitions.md)): explicit and separate, called out before Development is declared complete — not buried as one more line in the self-review checklist's own output.
+
+Any finding that's a real defect → fix before producing the summary, same as a self-review failure. Skip only for trivial-scope epics (one-line FIX, single-AC tweak) — same threshold as skipping subagent delegation elsewhere in the pipeline.
 
 ---
 
@@ -96,6 +116,7 @@ Write the **Development** section of `i3-outcome.md` (create the file with a `# 
 - Key implementation decisions (and why)
 - Deviations from spec / task list (with reason)
 - Self-review checklist result
+- Independent code review result (findings and resolutions, or "none")
 ```
 
 Persisted in `i3-outcome.md` for Verification to append to.

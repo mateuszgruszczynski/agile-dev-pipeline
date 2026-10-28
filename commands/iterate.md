@@ -4,11 +4,19 @@ description: Run iteration phases continuously through Refinement / Decompositio
 
 Iteration phase runner. Runs the iteration loop forward through every phase until it hits a ⛳ CHECKPOINT or backlog exhaustion. State is saved to `state.md` after each approval; closing the session at any point is a safe pause.
 
-**Checkpoint footer.** Every ⛳ CHECKPOINT presentation in this command — Environment, Refinement, Decomposition + Plan, Integration — ends with one compact progress line, computed from `state.md`: `Progress: Iteration <iteration> · <current_epic> · <X>/<Y> epics done`, where `<X>/<Y>` counts `DONE` epics against all epics in the Backlog table. This is the only status output at checkpoint time — do not print the full `/agile-dev:status` report here.
+**Checkpoint footer.** Every ⛳ CHECKPOINT presentation in this command — Environment, Refinement, Decomposition + Plan, Integration — ends with one compact progress line. Run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/checkpoint_footer.py --state .project-artifacts/state.md` and print its stdout verbatim (`Progress: Iteration <N> · <epic> · <X>/<Y> epics done`) — don't re-derive it by reading the Backlog table yourself. This is the only status output at checkpoint time — do not print the full `/agile-dev:status` report here.
 
 **Communication style.** Applies to every message this command produces. Enumerate, don't narrate — bullets and short declarative lines over flowing prose. Lead with the decision or the fact, not a preamble. At a checkpoint, lead with what's being decided, not a narrative recap of how we got there.
 
 **Checkpoint approval mechanism.** Every "wait for APPROVE" in this file means: use the `AskUserQuestion` tool (per `start.md`'s Checkpoint protocol) instead of a typed reply. Options are `Approve` and `Request changes` for Refinement and Decomposition + Plan; for Integration's checkpoint, add a third option when a release boundary applies (`Approve + flag release boundary`). The built-in `Other` option covers "request changes, and type what" directly. Fall back to the plain-text prompt only if `AskUserQuestion` isn't available in this session.
+
+**Background hand-backs while a checkpoint is pending.** A background subagent's result can arrive after a checkpoint question has been asked but before the user has answered it. That message carries no approval — never treat it as one, and never start the next phase's work on the strength of it. After relaying the result, restate the still-pending checkpoint in one line before waiting again.
+
+**Progress visibility for anything long-running** (a background shell, a subagent, a test run) — four rules, apply throughout every phase below:
+1. Never chain a fast step and a slow step in one shell command (`git add ... && npm run verify`) — run them as separate commands, so the process list shows the real one instead of looking hung on the fast part.
+2. For any task expected to take more than a couple of minutes, write a one-line current-state header to a log file: phase, N of M done, started at, expected duration.
+3. When delegating to a subagent for work that will take a while, tell it to state its expected duration up front and append interim status rather than going silent until it finishes.
+4. At the end of any task, explicitly check for and stop any process it started (a mock server, a browser instance) — don't leave one running unnoticed.
 
 ---
 
@@ -41,32 +49,35 @@ If `$ARGUMENTS` is provided, treat it as an epic-name override. See *Argument be
 
 ### Bundle selection algorithm
 
-1. **Load candidates.** Read `f3-backlog.md`. Take all epics with status `TODO`. Discard `DONE`, `IN_PROGRESS`, `BLOCKED`.
-2. **Filter unblocked.** Drop epics whose declared dependencies (from the epic detail block) include any epic not yet `DONE`. If a candidate's dependency is in the same TODO pool, it stays blocked until its blocker is scheduled and completed.
-3. **Order candidates.** Sort by priority (P1 first, then P2, then P3). Within the same priority, sort by size descending (larger first — fills budget faster). Stable tiebreak by submission order.
-4. **Build bundle (greedy, closer-to-budget):**
-   - If `$ARGUMENTS` is provided: parse it as one or more epic names (comma- or plus-separated). Use those as the bundle directly. Skip steps 5–7. Validate every named epic is in the unblocked TODO pool; if not, refuse.
-   - Otherwise: walk the ordered candidate list, accumulating points.
-     - If the bundle is empty (first candidate): add it unconditionally (rule: a single oversized epic is always allowed).
-     - For each subsequent candidate `c`: compute `stop_dev = |budget - sum|` and `add_dev = |budget - (sum + c.points)|`. If `add_dev < stop_dev`, add `c` and continue. If `add_dev ≥ stop_dev`, stop — current bundle is closer to budget.
-   - Add to the bundle any **dependent epics of bundled epics** that are themselves in the unblocked pool — only if they fit the same closer-to-budget rule. This avoids leaving a dependent stranded right after its blocker just shipped.
+This is a deterministic graph-filter + greedy bin-pack — no judgment needed to compute it, only to act on an ambiguous result. **Run it, don't re-derive it by hand:**
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/bundle_select.py --state .project-artifacts/state.md --budget <budget>
+```
+
+(Pre-flight, cheap: run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/backlog_integrity_check.py --state .project-artifacts/state.md` once per iteration start too — it catches a broken `Depends on` reference or a dependency cycle before the bundler trips over it. `ok: false` → stop and fix the Backlog table; don't hand a broken graph to the bundler.)
+
+If `$ARGUMENTS` is provided, pass `--force "<epic ids or names, comma/plus-separated>"` instead of `--budget` logic changing — the script validates the forced set itself (every named epic must be `TODO` and unblocked, deps satisfied by `DONE` or by another epic in the same forced set) and refuses with a clear reason if not. A forced, successful result always has `unambiguous: true` and skips straight to step 7 below — the user naming the epic by name *is* the explicit confirmation the ambiguity gate exists to require.
+
+The script's JSON result gives you everything step 5 below needs: `bundle` (id/name/size/points/priority per epic), `total_points`, `unambiguous`, `reason` (when ambiguous: a lone oversized epic, or a tie at the same priority/size for the last slot), plus `excluded_deferred_pre_mvp` and `excluded_needs_findings_from` for epics it deliberately left out. The algorithm the script implements — unblocked-pool filtering, the Deferred-pre-MVP gate, priority/size ordering, the closer-to-budget greedy walk, the chain re-check, the `needs-findings-from` hard barrier (see [backlog.md](../pipeline/backlog.md)) — is documented in the script's own docstring; this file doesn't duplicate it twice. If the script's behavior and this paragraph ever disagree, the script is buggy — fix it, don't route around it by hand-deriving the bundle instead.
+
 5. **Present the bundle, and decide whether to pause** (per the `autonomy` policy):
 
-   Build the summary first:
-   > `Next iteration <N> bundle (budget = <budget> pts / <size>; total = <sum> pts):`
+   Build the summary from the script's JSON:
+   > `Next iteration <N> bundle (budget = <budget> pts / <size>; total = <total_points> pts):`
    > `  • EP-3 — Search index (L, 5.2 pts) P1`
    > `  • EP-7 — Filter UI (M, 3.0 pts) P1`
 
-   Then:
+   Then, keyed off the script's `unambiguous` field:
    - `ai-driven` → print the summary as a notification and proceed to step 7. Never ask.
-   - `semi-automatic` (default) → **auto-proceed when the pick is unambiguous.** The pick is unambiguous when it is the plain greedy result with no judgment call: no other TODO epic ties at the same priority and would fit the budget equally well at the margin, and the bundle was not formed by force-adding a single oversized epic past budget. When unambiguous, print the summary and proceed to step 7 without asking. Only when the pick required judgment (an arbitrary tie-break, or a lone oversized epic) append `Proceed? (yes / edit <add EP-x | remove EP-y> / no)` and wait.
+   - `semi-automatic` (default) → when `unambiguous: true`, print the summary and proceed to step 7 without asking. When `false`, append the script's `reason` and `Proceed? (yes / edit <add EP-x | remove EP-y> / no)`, and wait.
    - `user-driven` → always append `Proceed? (yes / edit <add EP-x | remove EP-y> / no)` and wait.
 
-6. **edit** branch (only reachable when the question was asked): parse the user's add/remove instructions, re-validate (dependencies unblocked, epic in TODO pool), recompute total, re-present. Loop until user replies yes or no.
+6. **edit** branch (only reachable when the question was asked): parse the user's add/remove instructions as a new `--force` list and re-run the script; re-present. Loop until user replies yes or no.
 7. **yes** branch: set `current_epic` in `state.md` to a comma-separated list of epic names from the bundle. Mark each bundled epic as `IN_PROGRESS` in the Backlog table. Set `current_phase: Refinement`. Iteration directory slug derives from the first (highest-priority) epic: `iterations/<NNN>-<first-epic-slug>/`. Proceed to Step 3.
 
 8. **no / empty backlog:**
-   - Empty: report `Backlog is empty — pipeline complete.` Stop.
+   - Empty, or the script reports no eligible candidates: report `Backlog is empty — pipeline complete.` Stop.
    - User said no: stop. Say `Iteration not started.`
 
 `current_phase` is an iteration phase (bundle in flight):
@@ -102,7 +113,7 @@ Read the phase file for `current_phase`. Load artifacts listed in the phase's `L
 
 **After each phase finishes** (checkpoint APPROVE, auto-continue, or no-checkpoint completion): advance `current_phase` in `state.md` and run the next phase in the same session. Apply the test_coverage override above when deciding which next phase to run. Do not ask the user to re-invoke `/agile-dev:iterate`. The loop pauses only at: a ⛳ CHECKPOINT awaiting APPROVE (per the autonomy override), or the user closing the session.
 
-**Token usage log.** Every `Agent` tool call's result carries a usage block (`subagent_tokens`, `tool_uses`, `duration_ms`). Keep a running tally of `subagent_tokens` for the phase currently in progress. The moment that phase finishes (same trigger as the paragraph above), append one row to `.project-artifacts/token-usage.md` (create with a header row if missing): `| <phase name> | Iteration <N> (<epic>) | <phase's subagent_tokens total> | <number of Agent calls this phase> | <new cumulative total = previous cumulative + this phase's total> |`. This is a diagnostic log for the user, not something to mention unless asked — don't narrate it in chat. Note the scope: this tracks delegated subagent work only, not tokens spent by the orchestrator's own direct generation — state that limitation if the user asks about total session cost.
+**Token usage log.** Every `Agent` tool call's result carries a usage block (`subagent_tokens`, `tool_uses`, `duration_ms`). Keep a running tally of `subagent_tokens` and the call count for the phase currently in progress — that part still needs you, nothing else has the numbers. The moment that phase finishes (same trigger as the paragraph above), hand the totals to the script instead of formatting the row yourself: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/log_tokens.py --file .project-artifacts/token-usage.md --phase "<phase name>" --context "Iteration <N> (<epic>)" --tokens <total> --calls <count>` — it creates the header on first use and computes the cumulative total. This is a diagnostic log for the user, not something to mention unless asked — don't narrate it in chat. Note the scope: this tracks delegated subagent work only, not tokens spent by the orchestrator's own direct generation — state that limitation if the user asks about total session cost.
 
 **Pipeline lessons log.** Write an entry to `.project-artifacts/pipeline-lessons.md` (create with a header if missing) whenever something about the *pipeline itself* — not the user's project content — went wrong and got fixed: a Mid-iteration recovery tier fires (see below), a checkpoint gets rejected because the draft substantively misread the request or added scope nobody asked for (not just a wording or style preference), or a hook denial blocks something that needed explaining or working around. Format:
 ```
@@ -204,6 +215,11 @@ This is separate from `pipeline-feedback.md` (user-authored — the user appends
 - Otherwise ⛳ CHECKPOINT: present `i3-outcome.md`. User chooses APPROVE (accept), REJECT (loop back — see *Mid-iteration recovery*), or release boundary.
 
 **Release boundary:** if APPROVE *and* this iteration is a release boundary (MVP done, milestone), stop and say `Integration approved. Release boundary — run /agile-dev:release before continuing.`
+
+**If Integration surfaced a real foundation-impact finding** (a SPIKE epic's findings document named a needed Vision/Architecture/Backlog change — see [integration.md](integration.md) step 9): handle this before the ordinary iteration-boundary question below, regardless of `autonomy` — a foundation change is a hard handoff, not a routine approval, the same way a generated dev container or a real-credential request already pause regardless of autonomy elsewhere in this pipeline. Offer:
+> `Iteration <N>'s spike flagged a foundation change: <phase>. Run /agile-dev:revise <phase> now with the delta pre-filled from the findings? (yes / handle it manually later)`
+- **yes** → load and follow `commands/revise.md` for that phase, passing the findings document as the delta source (same as `/agile-dev:revise <phase> --from <findings path>` — see `revise.md`'s delta-source option) so the user only confirms rather than re-describing the change. One checkpoint per phase needing revision. Then continue to the ordinary iteration-boundary question below.
+- **handle it manually later** → note it was flagged and deferred, continue to the ordinary iteration-boundary question below. Nothing is lost — the findings document still has it.
 
 **Iteration boundary (after APPROVE or auto-continue)** — per `autonomy` policy:
 

@@ -6,6 +6,8 @@
 
 > **Skipped entirely when `test_coverage = none`** in `.project-artifacts/policy.md`. The orchestrator goes Development → Integration, the Verification section of `i3-outcome.md` is not written, and Integration's AC table changes to a manual-smoke check (see [integration.md](integration.md)).
 
+> **For SPIKE epics (see [backlog.md](backlog.md)) where the evidence requires the user's own login or account:** skip automated Verification for that piece of evidence specifically — it can't be run unattended. Record it as manual evidence instead: what was checked, by whom, when, and the result tag (`works` / `works with limits` / `does not work` / `unverified` / `unresolved`). This is narrower than `test_coverage = none` — it applies to the one piece of evidence that genuinely needs the user present, not the whole epic.
+
 ---
 
 ## Inputs
@@ -26,7 +28,9 @@
 
    Record reproduction steps. Non-reproducible tests are not tests.
 
-2. **Stub external third parties via real mock-server processes** (WireMock, Pact, hoverfly, Mockoon, hand-rolled HTTP stubs). Never in-process mocks at this level. Pin contracts to the production schema/version.
+   **Design for parallel-safe execution once the regression suite is likely to grow large** (roughly a few hundred scenarios or more, or any sign the project will run for multiple weeks): isolated temp dirs per test, per-process ports instead of a fixed port, one shared read-only built binary rather than rebuilding per test, and sharding test files across workers. A suite crossing roughly 15–20 minutes is the signal to invest in this now — retrofitting parallelism onto a suite that's already grown to tens of minutes is much more expensive than designing for it from the environment setup. Do not narrow test *coverage* to buy speed — that trades a slow suite for a suite that misses real regressions.
+
+2. **Stub external third parties via real mock-server processes** (WireMock, Pact, hoverfly, Mockoon, hand-rolled HTTP stubs). Never in-process mocks at this level. Pin contracts to the production schema/version. **Stop every mock-server process once the run finishes** — a mock server left running unnoticed has gone undetected for hours before. Check for and kill it explicitly as part of finishing this step, don't rely on remembering.
 
 3. **Implement System-integration scenarios as test files** in the project's test framework (pytest, jest, junit, go test, rspec, vitest). The test file is the artifact — committed, re-runs in CI.
    - Drive the application via the language's real client (HTTP via `requests`/`supertest`/`RestAssured`, gRPC via generated client, broker client, socket, subprocess, filesystem).
@@ -37,9 +41,11 @@
 
 5. **Run the suite** via the project's runner (`pytest`, `npm test`, `mvn verify`, `go test ./...`). Every System-integration and E2E scenario from the Test Plan must execute. A scenario waiting on external dependency or missing infra is flagged explicitly — fix now or move to a follow-up FIX epic. Do not mark uncovered scenarios as covered.
 
-6. **Stabilise flakes by root cause.** No sleeps, no retries. If unfixable this iteration: quarantine with written reason + follow-up task.
+6. **Stabilise flakes by root cause.** No sleeps, no retries. If unfixable this iteration: quarantine with written reason + follow-up task. **Node-specific:** running `node --test` from inside a `node:test` test inherits `NODE_TEST_CONTEXT` and reports success regardless of nested failures — clear it explicitly for any nested test run, and show a new gate test fail once (a deliberately planted failure) before trusting it to actually gate anything.
 
 7. **Confirm AC coverage.** Each AC has ≥1 Verification scenario unless it has no out-of-process observable (then in-process coverage from Development is sufficient and explicitly noted).
+
+8. **After any Verification-driven fix, rerun the whole suite — not just the test that failed.** A fix narrow enough to satisfy one failing test can break a different path the fix didn't consider; only full-suite coverage catches that reliably.
 
 ---
 

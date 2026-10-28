@@ -12,6 +12,7 @@ These are quality gates, not phases. They are checked from inside the phases lis
 
 **Conditions:**
 - Epic has a name, type (FEATURE / INFRA / FIX / etc.), priority, and rough size
+- Epic has a Journey step (or "cross-cutting") and a Slice (`MVP` / `Deferred`) — see the Story Map in [backlog.md](backlog.md)
 - Description states what the epic delivers and why it matters
 - 2–3 key scenarios are written (`As a [user], I can [action]`)
 - 3–5 high-level acceptance criteria are listed
@@ -70,6 +71,12 @@ If DoT fails, the cheapest fix is almost always rewriting the AC, not adding mor
 - [integration.md](integration.md) — Integration cannot be APPROVED until every DoD condition holds.
 - [iterate.md](../commands/iterate.md), iteration close — closing the iteration is gated on a passing Integration checkpoint, which is gated on DoD.
 
+**SPIKE epics (see [backlog.md](backlog.md)) — DoD adapts, it doesn't disappear:**
+- Replace "every AC traces to a passing scenario" with: every AC (a question) has a recorded, reproducible answer in the findings document, tagged `works` / `works with limits` / `does not work` / `unverified` / `unresolved`. `unverified` or `unresolved` are legitimate, complete answers — they are not the same as an AC left unaddressed.
+- Replace the pass/fail test-suite conditions with: the Test Plan variant for SPIKE epics (see [test-plan.md](test-plan.md)) passes — the evidence record exists and its reproduction steps actually reproduce it.
+- The foundation-impact section (mandatory in the findings document) is complete, even when its content is "no impact."
+- Everything else (no hardcoded credentials, documentation, CHANGELOG entry, `i2`/`i3` accuracy) applies unchanged.
+
 **Policy effects on DoD** (driven by `.project-artifacts/policy.md`):
 
 | Policy | DoD adaptation |
@@ -91,8 +98,8 @@ If DoD fails, fix it before approving Integration. Do not defer DoD failures to 
 **Purpose:** Gate on any subagent-drafted content (Vision, Architecture, Backlog, Refinement). DoR and DoT catch a requirement that's *incomplete or ambiguous relative to what the user asked for*. Neither one catches a requirement that's complete, unambiguous, and correctly implemented — but that nobody asked for in the first place. A draft can pass DoR and DoT perfectly while still containing fabricated scope (e.g. a stated requirement for "a selector" silently expanded into "automatic detection logic," or example documents shown for context turned into a requirement to migrate them). This is a different failure mode and needs its own gate.
 
 **Conditions:**
-- Every subagent drafting Vision/Architecture/Backlog/Refinement content also produces an explicit **"Added beyond what was stated"** list: every capability, feature, or behaviour in the draft that the user did not explicitly request, named individually, with a one-line reason it seemed reasonable to add. If the subagent added nothing, the list says so explicitly ("None — every item traces to something the user said") — it is never just omitted.
-- The orchestrator reviews this list against the actual conversation before presenting anything — don't trust the subagent's self-report blindly; this is exactly the kind of check a subagent can under-report on its own work.
+- The "Added beyond what was stated" list — every capability, feature, or behaviour in the draft that the user did not explicitly request, named individually, with a one-line reason it seemed reasonable to add — is produced by **an independent spec-critic subagent, not by the drafting subagent self-reporting on its own work.** A drafter checking its own output for what it silently added is the same weak check as an orchestrator trusting that self-report; neither is independent. The critic subagent receives the draft plus the actual requirements context (the conversation's confirmed worked examples, non-goals, ACs, design decisions — whatever the phase has) and is instructed to find gaps, ambiguity, inconsistency, and interpretation-space as well as unstated scope — adversarial review is its only job. If it finds nothing added, the list says so explicitly ("None — every item traces to something the user said") — never just omitted.
+- The orchestrator still reviews the critic's list against the actual conversation before presenting anything — a second check on top of the critic's independence, not a replacement for it.
 - At the checkpoint, the list is presented **separately and first**, before the main artifact — short, bolded, one line per item. It is never folded into the body of the spec/vision/architecture doc, where it's easy to miss in a long document.
 - Each item needs an explicit confirm or strike from the user — not a blanket APPROVE of the whole checkpoint. An item the user strikes is removed from the artifact before it's saved. An item they confirm becomes a stated requirement going forward; it does not need to be re-flagged on a later pass.
 

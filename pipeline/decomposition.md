@@ -50,6 +50,7 @@ Documentation tasks appear in the task list like any other task, with a role own
 - Each DEV task should have corresponding in-process test coverage (DEV) plus, where the behaviour is observable out-of-process, a Verification-owned scenario (QA)
 - Infrastructure and security tasks should not be deferred to the end
 - For epics with a UI: always include at least one DESIGN task and at least one E2E scenario of type UI. For backend / protocol-only epics, the equivalent E2E task is API / Protocol / CLI / File-batch typed — pick the type that matches how the epic is actually used
+- **Any epic that handles untrusted input (user-supplied data, external API responses, file uploads, anything crossing a trust boundary) gets a SECURITY task by default** — not only when someone thinks to add one. Run it after the CLI/API surface is wired, so there's something real to check (input validation, output encoding, secret handling).
 
 **Step 1 — Read the locked design decisions (no new approval gate)**
 
@@ -57,7 +58,7 @@ The non-trivial implementation choices were surfaced and confirmed during **Refi
 
 Decomposition occasionally surfaces a genuinely new decision the spec didn't anticipate (a task ordering forces a structural choice, a dependency reveals a missing integration call). When that happens:
 - `semi-automatic` (default) / `ai-driven` → pick the reasonable default consistent with the spec and the existing decisions, and **record it** as an added line in the Design Decisions carried into `i2-plan.md`. Only pause if the new decision materially changes scope or contradicts an AC — that's a Refinement loop-back, not a task-planning question.
-- `user-driven` → present the new decision (Decision needed / Intended approach form) and wait.
+- `user-driven` → present the new decision using [refinement.md](refinement.md)'s **Decision needed** / **Intended approach** template — topic, options with tradeoffs, or the intended approach and why — not a short title, then wait.
 
 This keeps Refinement as the single engagement point: by the time Decomposition runs, *how* is already settled.
 

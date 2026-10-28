@@ -79,7 +79,7 @@ All architecture diagrams are produced as code, stored in the repository. No bin
 
 **Subagent — default for document drafting.** Skip only for very small projects (single CLI tool, one-file script). The C4 diagrams and integration strategy table are particularly worth offloading. High-stakes decisions (tech stack, role set, orchestration approach, security posture) stay with the orchestrator and the user.
 
-**Definition of Scope Fidelity (see [definitions.md](definitions.md)):** the subagent must also return an "Added beyond what was stated" list — components, integrations, or decisions in the draft that go beyond what Vision and the user's answers actually called for. Present that list separately and first at the checkpoint, before the architecture document itself.
+**Definition of Scope Fidelity (see [definitions.md](definitions.md)):** after the drafting subagent returns the architecture document, delegate to a **second, independent subagent** — the spec critic — with the draft plus Vision and the user's answers (not the drafter's own opinion of its work). Its only job: find gaps, ambiguity, inconsistency, and interpretation-space, and produce the "Added beyond what was stated" list itself — components, integrations, or decisions that go beyond what Vision and the user's answers actually called for. Present that list separately and first at the checkpoint, before the architecture document itself.
 
 - **Pass:** approved Vision (`f1-vision.md`), user's answers, Output requirements + diagram standard + Project Type Adaptations table from this file.
 - **Expect:** full architecture document with Mermaid diagrams. Orchestrator reviews, fixes decisions, writes `f2-architecture.md`.
